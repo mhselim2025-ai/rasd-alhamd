@@ -1,0 +1,1577 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منظومة رصد واعتماد الدرجات - مدرسة الحمد للقرآن الكريم</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
+            background-color: #f0f4f8;
+            margin: 0;
+            padding: 0;
+            direction: rtl;
+            color: #1e293b;
+        }
+        .topbar {
+            background: #1f4e78;
+            color: #ffffff;
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+        }
+        .topbar h1 { font-size: 16px; margin: 0; }
+        .topbar .sub { font-size: 12px; opacity: 0.85; }
+        .btn {
+            border: none;
+            border-radius: 8px;
+            padding: 9px 14px;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+        .btn:hover { opacity: 0.92; }
+        .btn:active { transform: scale(0.98); }
+        .btn-primary { background: #1f4e78; color: #fff; }
+        .btn-success { background: #155e3b; color: #fff; }
+        .btn-warning { background: #b45309; color: #fff; }
+        .btn-danger { background: #991b1b; color: #fff; }
+        .btn-wa { background: #16a34a; color: #fff; }
+        .btn-light { background: #e2e8f0; color: #1e293b; }
+        .btn-sm { padding: 6px 10px; font-size: 12px; }
+
+        .container { max-width: 1000px; margin: 20px auto; padding: 0 12px; }
+        .card {
+            background: #ffffff;
+            border-radius: 14px;
+            padding: 18px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+            border: 1px solid #e2e8f0;
+            margin-bottom: 16px;
+        }
+        .login-box { max-width: 420px; margin: 50px auto; text-align: center; }
+        .login-box h2 { color: #1f4e78; margin-top: 0; font-size: 20px; }
+        .input-field, .select-field, .textarea-field {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 14px;
+            outline: none;
+            background: #f8fafc;
+        }
+        .input-field:focus, .select-field:focus, .textarea-field:focus {
+            border-color: #1f4e78;
+            background: #ffffff;
+        }
+        .code-edit-input {
+            width: 115px;
+            padding: 5px 8px;
+            border: 1.5px solid #93c5fd;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 13px;
+            font-weight: bold;
+            color: #1f4e78;
+            text-align: center;
+            background: #f0f7ff;
+            direction: ltr;
+        }
+        .code-edit-input:focus {
+            border-color: #1f4e78;
+            background: #ffffff;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .badge-draft { background: #e2e8f0; color: #334155; }
+        .badge-submitted { background: #fef3c7; color: #92400e; }
+        .badge-returned { background: #fee2e2; color: #991b1b; }
+        .badge-approved { background: #dcfce7; color: #166534; }
+
+        .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+        .tab-btn {
+            background: #e2e8f0;
+            color: #334155;
+            border: none;
+            padding: 9px 15px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .tab-btn.active { background: #1f4e78; color: #ffffff; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+        th, td { border: 1px solid #cbd5e1; padding: 8px 6px; text-align: center; }
+        th { background: #1f4e78; color: #ffffff; }
+        tr:nth-child(even) { background: #f8fafc; }
+
+        .grade-input {
+            width: 75px;
+            padding: 6px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: bold;
+            border: 1.5px solid #94a3b8;
+            border-radius: 6px;
+        }
+        .grade-input:disabled { background: #e2e8f0; color: #475569; cursor: not-allowed; }
+
+        .alert-box {
+            padding: 12px 14px;
+            border-radius: 10px;
+            margin-bottom: 14px;
+            font-size: 13.5px;
+            line-height: 1.6;
+        }
+        .alert-info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+        .alert-danger { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+        .alert-success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+        .alert-warning { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        @media (max-width: 650px) {
+            .grid-2, .grid-3 { grid-template-columns: 1fr; }
+            .grade-input { width: 62px; padding: 5px; font-size: 13px; }
+            table { font-size: 12px; }
+        }
+        .hidden { display: none !important; }
+        .sync-indicator {
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.18);
+        }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <div>
+        <h1>منظومة رصد واعتماد الدرجات الإلكترونية</h1>
+        <div class="sub">جمعية رعاية حفظة القرآن الكريم بالمنيا - مدرسة الحمد للقرآن الكريم بالجزائر</div>
+    </div>
+    <div style="display:flex; align-items:center; gap:8px;">
+        <span id="cloudStatus" class="sync-indicator">وضع التخزين: محلي (تجريبي)</span>
+        <button id="btnChangeMyCode" class="btn btn-warning btn-sm hidden" onclick="openChangeMyCodeModal()">تغيير الكود 🔑</button>
+        <button id="btnLogout" class="btn btn-light btn-sm hidden" onclick="logout()">خروج</button>
+    </div>
+</div>
+
+<div class="container">
+
+    <!-- شريط التنقل بين الصلاحيات (يظهر تلقائياً لمن لديه أكثر من صلاحية: معلم + مراجع / أدمن) -->
+    <div id="roleSwitcherBar" class="card hidden" style="padding:12px 16px; background:#eff6ff; border:1.5px solid #93c5fd; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div style="font-weight:bold; color:#1f4e78; font-size:13.5px;">
+            مرحباً <span id="switcherUserName"></span> — اختر وضع العمل:
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button id="btnSwitchTeach" class="btn btn-primary btn-sm hidden" onclick="switchActivePortal('teacher')">📝 رصد الدرجات (معلم)</button>
+            <button id="btnSwitchReview" class="btn btn-warning btn-sm hidden" onclick="switchActivePortal('reviewer')">✅ المراجعة والاعتماد</button>
+            <button id="btnSwitchAdmin" class="btn btn-success btn-sm hidden" onclick="switchActivePortal('admin')">⚙️ لوحة الإدارة (أدمن)</button>
+        </div>
+    </div>
+
+    <!-- نافذة تغيير كود الدخول (كلمة السر) للمستخدم -->
+    <div id="changeMyCodeModal" class="card hidden" style="max-width:420px; margin:0 auto 16px auto; border:2px solid #1f4e78;">
+        <h3 style="margin-top:0; color:#1f4e78;">تغيير كود الدخول (كلمة السر)</h3>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+            <input type="text" id="oldMyCodeInp" class="input-field" style="text-align:center;" placeholder="كود الدخول الحالي">
+            <input type="text" id="newMyCodeInp" class="input-field" style="text-align:center;" placeholder="كود الدخول الجديد (3 أحرف/أرقام على الأقل)">
+            <input type="text" id="confirmMyCodeInp" class="input-field" style="text-align:center;" placeholder="تأكيد الكود الجديد">
+            <div style="display:flex; gap:8px;">
+                <button class="btn btn-success" style="flex:1;" onclick="submitChangeMyCode()">حفظ الكود الجديد ✔</button>
+                <button class="btn btn-light" onclick="closeChangeMyCodeModal()">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 1. شاشة تسجيل الدخول الموحدة -->
+    <div id="viewLogin" class="card login-box">
+        <h2>تسجيل الدخول للنظام</h2>
+        <p style="color:#64748b; font-size:13px; margin-bottom:18px;">أدخل كود الدخول الخاص بك (معلم / مراجع / مدير)</p>
+        <input type="text" id="loginCodeInput" autocomplete="off" onkeydown="if(event.key==='Enter') handleLogin()" class="input-field" style="text-align:center; font-size:18px; font-weight:bold; letter-spacing:1px; margin-bottom:12px;" placeholder="اكتب كود الدخول">
+        <button class="btn btn-primary" style="width:100%; padding:12px; font-size:15px;" onclick="handleLogin()">دخول</button>
+        <div id="loginError" class="alert-box alert-danger hidden" style="margin-top:12px;"></div>
+    </div>
+
+    <!-- 2. لوحة تحكم المدير (Admin Dashboard) -->
+    <div id="viewAdmin" class="hidden">
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchAdminTab('tabControl', this)">١. التحكم في الاختبارات والحالات</button>
+            <button class="tab-btn" onclick="switchAdminTab('tabUsers', this)">٢. الأكواد والمعلمون والمراجعون</button>
+            <button class="tab-btn" onclick="switchAdminTab('tabExcel', this)">٣. رفع وتصدير الإكسيل</button>
+            <button class="tab-btn" onclick="switchAdminTab('tabCloud', this)">٤. الربط السحابي (Firebase)</button>
+        </div>
+
+        <!-- تبويب 1: التحكم في الاختبار وإضافة اختبارات جديدة -->
+        <div id="tabControl" class="card">
+            <h3 style="margin-top:0; color:#1f4e78;">التحكم في الاختبار المفتوح للرصد حالياً</h3>
+            <div class="grid-2" style="align-items:end; margin-bottom:16px;">
+                <div>
+                    <label style="font-weight:bold; font-size:13px; display:block; margin-bottom:6px;">الاختبار النشط حالياً:</label>
+                    <select id="adminActiveExam" class="select-field"></select>
+                </div>
+                <div>
+                    <button class="btn btn-success" style="width:100%; padding:11px;" onclick="saveActiveExamSetting()">حفظ وتفعيل الاختبار المختار</button>
+                </div>
+            </div>
+
+            <!-- إضافة امتحان جديد غير الموجود -->
+            <div style="background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #cbd5e1; margin-bottom:16px;">
+                <h4 style="margin:0 0 8px 0; color:#1f4e78;">+ إضافة امتحان جديد للقائمة (بخلاف الامتحانات الأربعة):</h4>
+                <div class="grid-2">
+                    <input type="text" id="newExamTitleInput" class="input-field" placeholder="اكتب اسم الامتحان الجديد (مثلاً: الدوري الثالث أو اختبار شهر رمضان)">
+                    <button class="btn btn-primary" onclick="addNewExam()">إضافة الامتحان للقائمة</button>
+                </div>
+            </div>
+
+            <h4 style="color:#1f4e78; margin-bottom:8px;">موقف المجموعات في الاختبار المحدد:</h4>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>رقم</th>
+                            <th>اسم المجموعة</th>
+                            <th>المعلم</th>
+                            <th>الطلاب</th>
+                            <th>امتحان أحكام؟</th>
+                            <th>الحالة</th>
+                            <th>إجراء إداري</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminGroupsTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- تبويب 2: المعلمون والمراجعون وتعديل الأكواد يدوياً -->
+        <div id="tabUsers" class="card hidden">
+            <h3 style="margin-top:0; color:#1f4e78;">إدارة الأكواد والمعلمين والمراجعين</h3>
+            <div class="alert-box alert-info">
+                <b>تعديل الأكواد يدوياً:</b> يمكنك تغيير أي كود في عمود <b>«كود الدخول»</b> مباشرة بالكتابة داخله، وسيتم حفظه تلقائياً بمجرد الخروج من الخانة.
+            </div>
+            
+            <div style="background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #cbd5e1; margin-bottom:16px;">
+                <h4 style="margin:0 0 8px 0;">إضافة مراجع جديد:</h4>
+                <div class="grid-3">
+                    <input type="text" id="newRevName" class="input-field" placeholder="اسم المراجع">
+                    <input type="text" id="newRevPhone" class="input-field" placeholder="رقم الواتساب (010...)">
+                    <button class="btn btn-primary" onclick="addReviewer()">+ إضافة مراجع وتوليد كود</button>
+                </div>
+            </div>
+
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>الاسم</th>
+                            <th>الصفة</th>
+                            <th>كود الدخول (قابل للتعديل)</th>
+                            <th>المجموعات المسندة</th>
+                            <th>رقم الواتساب</th>
+                            <th>إرسال واتساب</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminUsersTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- تبويب 3: رفع وتصدير الإكسيل -->
+        <div id="tabExcel" class="card hidden">
+            <h3 style="margin-top:0; color:#1f4e78;">استيراد قاعدة البيانات وتصدير الدرجات المعتمدة</h3>
+            <div class="alert-box alert-info">
+                <b>توافق تلقائي مع شيت <code>tblStudents</code>:</b><br>
+                يقرأ النظام الأعمدة: (A: رقم المجموعة، B: المستوى، C: الفرقة، D: اسم المجموعة، E: اسم الدارس، F: رقم الطالب، G: معلم المجموعة) وأعمدة الدرجات (K: الدوري الأول، L: نصف العام، M: الدوري الثاني، N: نهاية العام، O: الأحكام) بالإضافة لأي امتحانات إضافية تضيفها.
+            </div>
+            <div style="margin-bottom:16px;">
+                <label style="font-weight:bold; display:block; margin-bottom:6px;">١. رفع ملف الإكسيل (`.xlsx`):</label>
+                <input type="file" id="excelFileInput" accept=".xlsx,.xls" class="input-field" style="margin-bottom:10px;">
+                <button class="btn btn-primary" onclick="importExcelFile()">استيراد البيانات وتوليد أكواد المعلمين</button>
+            </div>
+            <hr style="border:0; border-top:1px solid #e2e8f0; margin:18px 0;">
+            <div>
+                <label style="font-weight:bold; display:block; margin-bottom:6px;">٢. تصدير قاعدة البيانات كاملة بالدرجات المعتمدة:</label>
+                <button class="btn btn-success" onclick="exportExcelFile()">تحميل ملف الإكسيل المحدث (Excel)</button>
+            </div>
+        </div>
+
+        <!-- تبويب 4: الربط السحابي Firebase -->
+        <div id="tabCloud" class="card hidden">
+            <h3 style="margin-top:0; color:#1f4e78;">الربط السحابي المجاني (Firebase Firestore)</h3>
+            <div class="alert-box alert-warning">
+                <b>لماذا هذه الخطوة مهمة جداً؟</b><br>
+                لكي يفتح كل معلم ومراجع الرابط من هاتفه الشخصي وتصل إليك الدرجات فوراً:<br>
+                1. الصق كود <code>firebaseConfig</code> في المربع أدناه واضغط <b>«حفظ وتفعيل الربط السحابي»</b>.<br>
+                2. اضغط زر <b>«تحميل نسخة الموقع المربوطة سحابياً (index.html)»</b> ليرسل لك النظام ملف <code>index.html</code> مدمج بداخله كود الربط السحابي جاهزاً للرفع على Netlify!
+            </div>
+            <textarea id="firebaseConfigInput" rows="7" class="textarea-field" style="direction:ltr; text-align:left; font-family:monospace;" placeholder='{"apiKey": "...", "authDomain": "...", "projectId": "...", "storageBucket": "...", "messagingSenderId": "...", "appId": "..."}'></textarea>
+            <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
+                <button class="btn btn-primary" onclick="saveFirebaseConfig()">١. حفظ وتفعيل الربط السحابي</button>
+                <button class="btn btn-success" onclick="downloadCloudReadyHtml()">٢. تحميل ملف الموقع المدمج بالربط (index.html)</button>
+                <button class="btn btn-light" onclick="clearFirebaseConfig()">العودة للوضع المحلي</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. واجهة المعلم (Teacher Dashboard) -->
+    <div id="viewTeacher" class="hidden">
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                <div>
+                    <h3 id="teacherWelcome" style="margin:0; color:#1f4e78;">مرحباً أ/ ...</h3>
+                    <div id="teacherExamBanner" style="margin-top:6px; font-weight:bold; color:#155e3b;"></div>
+                </div>
+                <div style="min-width:220px;">
+                    <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px;">اختر المجموعة:</label>
+                    <select id="teacherGroupSelect" class="select-field" onchange="renderTeacherStudents()"></select>
+                </div>
+            </div>
+        </div>
+
+        <div id="teacherClosedAlert" class="card alert-box alert-warning hidden">
+            رصد الدرجات مغلق حالياً من قِبل إدارة المدرسة. يرجى التواصل مع الإدارة.
+        </div>
+
+        <div id="teacherGradingCard" class="card hidden">
+            <div id="teacherGroupStatusBanner" style="margin-bottom:12px;"></div>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>كود</th>
+                            <th>اسم الدارس</th>
+                            <th>المستوى / الفرقة</th>
+                            <th id="thExamCol">درجة الاختبار</th>
+                            <th id="thAhkamCol" class="hidden">درجة الأحكام</th>
+                        </tr>
+                    </thead>
+                    <tbody id="teacherStudentsTable"></tbody>
+                </table>
+            </div>
+
+            <div id="teacherActionsBar" style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap; justify-content:space-between; align-items:center;">
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button id="btnSaveDraft" class="btn btn-light" onclick="saveTeacherGrades(false)">حفظ مؤقت (مسودة)</button>
+                    <button id="btnSubmitGrades" class="btn btn-success" onclick="saveTeacherGrades(true)">إرسال للاعتماد (Submit)</button>
+                </div>
+                <button id="btnNotifyReviewerWa" class="btn btn-wa hidden" onclick="notifyReviewerWhatsApp()">إشعار المراجع عبر واتساب</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. واجهة المراجع (Reviewer Dashboard) -->
+    <div id="viewReviewer" class="hidden">
+        <div class="card">
+            <h3 id="reviewerWelcome" style="margin:0 0 6px 0; color:#1f4e78;">لوحة المراجعة والاعتماد</h3>
+            <div id="reviewerExamBanner" style="font-weight:bold; color:#155e3b;"></div>
+        </div>
+
+        <div id="reviewerListContainer"></div>
+    </div>
+
+    <!-- نافذة التعديل الإداري المباشر للمدير (Modal) -->
+    <div id="adminEditModal" class="card hidden" style="border:2px solid #1f4e78; background:#f8fafc;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <h3 id="adminModalTitle" style="margin:0; color:#1f4e78;">تعديل درجات المجموعة</h3>
+            <button class="btn btn-light btn-sm" onclick="closeAdminModal()">إغلاق</button>
+        </div>
+        <div style="overflow-x:auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>كود</th>
+                        <th>اسم الدارس</th>
+                        <th id="thAdminExamCol">درجة الاختبار</th>
+                        <th id="thAdminAhkamCol">درجة الأحكام</th>
+                    </tr>
+                </thead>
+                <tbody id="adminModalStudentsTable"></tbody>
+            </table>
+        </div>
+        <div style="margin-top:12px; display:flex; gap:8px;">
+            <button class="btn btn-success" onclick="saveAdminModalGrades()">حفظ التعديلات الإدارية</button>
+            <button class="btn btn-warning" onclick="adminResetGroupStatus('draft')">إعادة فتح المجموعة للمعلم</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+// إعدادات Firebase المدمجة (تُملأ تلقائياً عند تصدير النسخة المربوطة سحابياً)
+const EMBEDDED_FIREBASE_CONFIG = {
+  "apiKey": "AIzaSyDioTR_Eb8iLT720NTs1sVhAdyxs7CFqgM",
+  "authDomain": "alhamd-grades.firebaseapp.com",
+  "projectId": "alhamd-grades",
+  "storageBucket": "alhamd-grades.firebasestorage.app",
+  "messagingSenderId": "336220659900",
+  "appId": "1:336220659900:web:1bc02920ed9f035f0170b9",
+  "measurementId": "G-BR0P4WFYXR"
+};
+
+let db = null;
+let useCloud = false;
+
+// الحالة الافتراضية
+let APP_STATE = {
+    settings: {
+        active_exam: 'exam_1',
+        school_name: 'مدرسة الحمد للقرآن الكريم بالجزائر'
+    },
+    exams: [
+        { key: 'exam_1', label: 'الدوري الأول (عمود K)' },
+        { key: 'exam_2', label: 'نصف العام (عمود L)' },
+        { key: 'exam_3', label: 'الدوري الثاني (عمود M)' },
+        { key: 'exam_4', label: 'نهاية العام (عمود N)' }
+    ],
+    users: [
+        { code: 'ADM-2026', name: 'المدير العام', role: 'admin', groups: 'ALL', phone: '' },
+        { code: 'REV-101', name: 'لجنة المراجعة', role: 'reviewer', groups: 'ALL', phone: '' },
+        { code: 'TCH-101', name: 'آية أحمد محمد', role: 'teacher', groups: ['الحسين بن علي'], phone: '' },
+        { code: 'TCH-102', name: 'آية عادل ضاحي', role: 'teacher', groups: ['الشفاء بنت عبدالله'], phone: '' }
+    ],
+    groups_meta: {
+        'الحسين بن علي': { group_num: '1', teacher: 'آية أحمد محمد', has_ahkam: true },
+        'الشفاء بنت عبدالله': { group_num: '12', teacher: 'آية عادل ضاحي', has_ahkam: false }
+    },
+    students: [
+        { student_id: '9985', name: 'احمد جمال عبد الهادي', group: 'الحسين بن علي', group_num: '1', level: '5 - 7', section: 'السادسة', teacher: 'آية أحمد محمد', scores: { exam_1: '', exam_2: '', exam_3: '', exam_4: '', ahkam: '' } },
+        { student_id: '8438', name: 'احمد محمد يوسف', group: 'الحسين بن علي', group_num: '1', level: '5 - 7', section: 'السادسة', teacher: 'آية أحمد محمد', scores: { exam_1: '', exam_2: '', exam_3: '', exam_4: '', ahkam: '' } },
+        { student_id: '9824', name: 'رودينا محمد طلعت', group: 'الشفاء بنت عبدالله', group_num: '12', level: '8 - 11', section: 'الثانية', teacher: 'آية عادل ضاحي', scores: { exam_1: '', exam_2: '', exam_3: '', exam_4: '', ahkam: '' } }
+    ],
+    submissions: {}
+};
+
+let currentUser = null;
+let adminEditingGroup = null;
+
+function getExamLabel(examKey) {
+    if (!examKey || examKey === 'none') return 'مغلق حالياً';
+    const found = (APP_STATE.exams || []).find(e => e.key === examKey);
+    return found ? found.label.replace(/\s*\(عمود.*\)/, '') : examKey;
+}
+
+function initStorage() {
+    const savedFb = localStorage.getItem('quran_fb_config');
+    const activeCfg = EMBEDDED_FIREBASE_CONFIG || (savedFb ? JSON.parse(savedFb) : null);
+
+    if (activeCfg) {
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(activeCfg);
+            }
+            db = firebase.firestore();
+            useCloud = true;
+            document.getElementById('cloudStatus').textContent = 'وضع التخزين: سحابي متصل ✔';
+            document.getElementById('cloudStatus').style.background = '#15803d';
+            document.getElementById('firebaseConfigInput').value = JSON.stringify(activeCfg, null, 2);
+        } catch (e) {
+            console.error(e);
+            useCloud = false;
+        }
+    }
+    if (!useCloud) {
+        const localData = localStorage.getItem('quran_grades_state');
+        if (localData) {
+            const parsed = JSON.parse(localData);
+            if (!parsed.exams) parsed.exams = APP_STATE.exams;
+            APP_STATE = parsed;
+        } else {
+            saveState();
+        }
+    }
+}
+
+async function loadState() {
+    if (useCloud && db) {
+        const doc = await db.collection('quran_system').doc('main_state').get();
+        if (doc.exists) {
+            const data = doc.data();
+            if (!data.exams) data.exams = APP_STATE.exams;
+            APP_STATE = data;
+        } else {
+            await saveState();
+        }
+    } else {
+        const localData = localStorage.getItem('quran_grades_state');
+        if (localData) {
+            const parsed = JSON.parse(localData);
+            if (!parsed.exams) parsed.exams = APP_STATE.exams;
+            APP_STATE = parsed;
+        }
+    }
+}
+
+async function saveState() {
+    if (useCloud && db) {
+        await db.collection('quran_system').doc('main_state').set(APP_STATE);
+    } else {
+        localStorage.setItem('quran_grades_state', JSON.stringify(APP_STATE));
+    }
+}
+
+// ==================== 2. تسجيل الدخول ====================
+async function handleLogin() {
+    const code = document.getElementById('loginCodeInput').value.trim().toUpperCase();
+    const errEl = document.getElementById('loginError');
+    errEl.classList.add('hidden');
+
+    if (!code) {
+        errEl.textContent = 'يرجى إدخال كود الدخول.';
+        errEl.classList.remove('hidden');
+        return;
+    }
+
+    try {
+        await loadState();
+    } catch (err) {
+        errEl.innerHTML = 'تعذر الاتصال بقاعدة البيانات السحابية: ' + err.message + '<br>تأكد من تفعيل Rules في Firestore (allow read, write: if true;)';
+        errEl.classList.remove('hidden');
+        return;
+    }
+    const user = APP_STATE.users.find(u => u.code.toUpperCase() === code);
+    if (!user) {
+        errEl.textContent = 'كود الدخول غير صحيح! يرجى التأكد من الكود أو مراجعة الإدارة.';
+        errEl.classList.remove('hidden');
+        return;
+    }
+
+    currentUser = user;
+    document.getElementById('viewLogin').classList.add('hidden');
+    document.getElementById('btnLogout').classList.remove('hidden');
+    document.getElementById('btnChangeMyCode').classList.remove('hidden');
+
+    const canTeach = (user.role === 'teacher') || (Array.isArray(user.groups) && user.groups.length > 0 && user.role !== 'reviewer');
+    const canReview = (user.role === 'reviewer') || (user.is_reviewer === true);
+    const canAdmin = (user.role === 'admin') || (user.is_admin === true);
+
+    const roleCount = (canTeach ? 1 : 0) + (canReview ? 1 : 0) + (canAdmin ? 1 : 0);
+    const switcher = document.getElementById('roleSwitcherBar');
+    if (roleCount > 1) {
+        switcher.classList.remove('hidden');
+        document.getElementById('switcherUserName').textContent = user.name;
+        document.getElementById('btnSwitchTeach').classList.toggle('hidden', !canTeach);
+        document.getElementById('btnSwitchReview').classList.toggle('hidden', !canReview);
+        document.getElementById('btnSwitchAdmin').classList.toggle('hidden', !canAdmin);
+    } else {
+        switcher.classList.add('hidden');
+    }
+
+    if (canTeach) {
+        openTeacherView();
+    } else if (canReview) {
+        openReviewerView();
+    } else if (canAdmin) {
+        openAdminView();
+    }
+}
+
+function switchActivePortal(target) {
+    document.getElementById('viewAdmin').classList.add('hidden');
+    document.getElementById('viewTeacher').classList.add('hidden');
+    document.getElementById('viewReviewer').classList.add('hidden');
+    document.getElementById('adminEditModal').classList.add('hidden');
+
+    if (target === 'teacher') openTeacherView();
+    else if (target === 'reviewer') openReviewerView();
+    else if (target === 'admin') openAdminView();
+}
+
+function openChangeMyCodeModal() {
+    document.getElementById('oldMyCodeInp').value = '';
+    document.getElementById('newMyCodeInp').value = '';
+    document.getElementById('confirmMyCodeInp').value = '';
+    document.getElementById('changeMyCodeModal').classList.remove('hidden');
+}
+
+function closeChangeMyCodeModal() {
+    document.getElementById('changeMyCodeModal').classList.add('hidden');
+}
+
+async function submitChangeMyCode() {
+    if (!currentUser) return;
+    const oldVal = document.getElementById('oldMyCodeInp').value.trim().toUpperCase();
+    const newVal = document.getElementById('newMyCodeInp').value.trim().toUpperCase();
+    const confVal = document.getElementById('confirmMyCodeInp').value.trim().toUpperCase();
+
+    if (oldVal !== currentUser.code.toUpperCase()) {
+        alert('كود الدخول الحالي غير صحيح!');
+        return;
+    }
+    if (newVal.length < 3) {
+        alert('يجب أن يتكون الكود الجديد من 3 أحرف/أرقام على الأقل!');
+        return;
+    }
+    if (newVal !== confVal) {
+        alert('الكود الجديد وتأكيده غير متطابقين!');
+        return;
+    }
+
+    await loadState();
+    const dup = APP_STATE.users.some(u => u.code.toUpperCase() === newVal && u.code.toUpperCase() !== currentUser.code.toUpperCase());
+    if (dup) {
+        alert('هذا الكود مستخدم بالفعل لشخص آخر! اختر كوداً مختلفاً.');
+        return;
+    }
+
+    const idx = APP_STATE.users.findIndex(u => u.code.toUpperCase() === currentUser.code.toUpperCase());
+    if (idx !== -1) {
+        APP_STATE.users[idx].code = newVal;
+        currentUser.code = newVal;
+        await saveState();
+        closeChangeMyCodeModal();
+        alert(`تم تغيير كود الدخول بنجاح إلى: ${newVal} ✔`);
+    }
+}
+
+function logout() {
+    currentUser = null;
+    document.getElementById('loginCodeInput').value = '';
+    document.getElementById('viewAdmin').classList.add('hidden');
+    document.getElementById('viewTeacher').classList.add('hidden');
+    document.getElementById('viewReviewer').classList.add('hidden');
+    document.getElementById('adminEditModal').classList.add('hidden');
+    document.getElementById('roleSwitcherBar').classList.add('hidden');
+    document.getElementById('changeMyCodeModal').classList.add('hidden');
+    document.getElementById('btnChangeMyCode').classList.add('hidden');
+    document.getElementById('btnLogout').classList.add('hidden');
+    document.getElementById('viewLogin').classList.remove('hidden');
+}
+
+// ==================== 3. لوحة تحكم المدير (Admin) ====================
+function openAdminView() {
+    document.getElementById('viewAdmin').classList.remove('hidden');
+    renderExamsDropdown();
+    renderAdminGroups();
+    renderAdminUsers();
+}
+
+function renderExamsDropdown() {
+    const sel = document.getElementById('adminActiveExam');
+    const examsList = APP_STATE.exams || [];
+    sel.innerHTML = `<option value="none">-- مغلق (لا يوجد رصد متاح حالياً) --</option>` +
+        examsList.map(ex => `<option value="${ex.key}">${ex.label}</option>`).join('');
+    sel.value = APP_STATE.settings.active_exam || 'none';
+}
+
+async function addNewExam() {
+    const title = document.getElementById('newExamTitleInput').value.trim();
+    if (!title) {
+        alert('يرجى كتابة اسم الامتحان الجديد أولاً!');
+        return;
+    }
+    if (!APP_STATE.exams) APP_STATE.exams = [];
+    const newKey = 'exam_' + (APP_STATE.exams.length + 1) + '_' + Date.now().toString().slice(-3);
+    APP_STATE.exams.push({ key: newKey, label: title });
+    APP_STATE.settings.active_exam = newKey;
+
+    await saveState();
+    document.getElementById('newExamTitleInput').value = '';
+    renderExamsDropdown();
+    renderAdminGroups();
+    alert(`تمت إضافة امتحان (${title}) وتفعيله كاختبار نشط بنجاح!`);
+}
+
+function switchAdminTab(tabId, btnEl) {
+    ['tabControl', 'tabUsers', 'tabExcel', 'tabCloud'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+    });
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(tabId).classList.remove('hidden');
+    btnEl.classList.add('active');
+}
+
+async function saveActiveExamSetting() {
+    APP_STATE.settings.active_exam = document.getElementById('adminActiveExam').value;
+    await saveState();
+    renderAdminGroups();
+    alert('تم تحديث الاختبار النشط بنجاح!');
+}
+
+function getSubmissionRecord(examKey, groupName) {
+    const key = `${examKey}_${groupName}`;
+    if (!APP_STATE.submissions[key]) {
+        APP_STATE.submissions[key] = { status: 'draft', note: '', updated_at: '' };
+    }
+    return APP_STATE.submissions[key];
+}
+
+function getStatusBadge(status) {
+    const map = {
+        'draft': '<span class="badge badge-draft">قيد الرصد عند المعلم</span>',
+        'submitted': '<span class="badge badge-submitted">بانتظار المراجعة</span>',
+        'returned': '<span class="badge badge-returned">مُرجعة للتعديل</span>',
+        'approved': '<span class="badge badge-approved">معتمدة نهائياً ✔</span>'
+    };
+    return map[status] || map['draft'];
+}
+
+function renderAdminGroups() {
+    const tbody = document.getElementById('adminGroupsTable');
+    const activeExam = APP_STATE.settings.active_exam;
+    const groupNames = Object.keys(APP_STATE.groups_meta);
+
+    tbody.innerHTML = groupNames.map(gName => {
+        const meta = APP_STATE.groups_meta[gName];
+        const count = APP_STATE.students.filter(s => s.group === gName).length;
+        const sub = activeExam !== 'none' ? getSubmissionRecord(activeExam, gName) : { status: 'draft' };
+        const checked = meta.has_ahkam ? 'checked' : '';
+        return `
+        <tr>
+            <td>${meta.group_num || '-'}</td>
+            <td style="font-weight:bold;">${gName}</td>
+            <td>${meta.teacher || '-'}</td>
+            <td>${count}</td>
+            <td>
+                <input type="checkbox" ${checked} onchange="toggleGroupAhkam('${gName}', this.checked)">
+            </td>
+            <td>${activeExam === 'none' ? '<span class="badge badge-draft">مغلق</span>' : getStatusBadge(sub.status)}</td>
+            <td>
+                <button class="btn btn-primary btn-sm" onclick="openAdminEditGroup('${gName}')">عرض / تعديل الدرجات</button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+async function toggleGroupAhkam(groupName, isChecked) {
+    if (APP_STATE.groups_meta[groupName]) {
+        APP_STATE.groups_meta[groupName].has_ahkam = isChecked;
+        await saveState();
+    }
+}
+
+function buildReviewerScopeWidget(u, idx, allGroupNames) {
+    const revGroups = (u.role === 'reviewer') ? u.groups : (u.review_groups ?? 'ALL');
+    let mode = 'ALL';
+    if (revGroups === 'NONE') {
+        mode = 'NONE';
+    } else if (Array.isArray(revGroups)) {
+        mode = 'CUSTOM';
+    }
+
+    const selectedSet = new Set(Array.isArray(revGroups) ? revGroups : []);
+    const checkboxesHtml = allGroupNames.map(gName => `
+        <label class="rev-grp-item_${idx}" data-name="${gName}" style="display:flex; align-items:center; gap:6px; padding:5px 8px; border-bottom:1px solid #f1f5f9; font-size:12px; cursor:pointer;">
+            <input type="checkbox" class="rev-grp-chk_${idx}" value="${gName}" ${selectedSet.has(gName) ? 'checked' : ''}>
+            <span>${gName}</span>
+        </label>
+    `).join('');
+
+    const summaryText = selectedSet.size > 0
+        ? `المحدد (${selectedSet.size}): ${Array.from(selectedSet).slice(0, 2).join('، ')}${selectedSet.size > 2 ? '...' : ''}`
+        : 'اضغط لاختيار مجموعات المراجعة...';
+
+    return `
+        <div style="min-width:210px; position:relative; margin-top:4px;">
+            <select class="select-field" style="padding:5px 8px; font-size:12px; font-weight:bold;" onchange="changeReviewerScope(${idx}, this.value)">
+                <option value="ALL" ${mode === 'ALL' ? 'selected' : ''}>يراجع: كل المجموعات</option>
+                <option value="NONE" ${mode === 'NONE' ? 'selected' : ''}>ولا مجموعة (لا يراجع)</option>
+                <option value="CUSTOM" ${mode === 'CUSTOM' ? 'selected' : ''}>تحديد مجموعات مراجعة معينة...</option>
+            </select>
+
+            <div id="revCustomWrapper_${idx}" style="margin-top:5px; display:${mode === 'CUSTOM' ? 'block' : 'none'};">
+                <button type="button" class="btn btn-light btn-sm" style="width:100%; justify-content:space-between; border:1px solid #94a3b8; background:#fff;" onclick="toggleRevDropdown(${idx})">
+                    <span id="revSummary_${idx}" style="font-size:11.5px; color:#1f4e78;">${summaryText}</span>
+                    <span>▼</span>
+                </button>
+
+                <div id="revDropdownMenu_${idx}" class="hidden" style="margin-top:4px; background:#ffffff; border:1.5px solid #1f4e78; border-radius:8px; box-shadow:0 6px 18px rgba(0,0,0,0.14); text-align:right; z-index:50;">
+                    <div style="padding:6px; border-bottom:1px solid #e2e8f0; background:#f8fafc;">
+                        <input type="text" class="input-field" style="padding:5px 8px; font-size:12px;" placeholder="ابحث باسم المجموعة..." oninput="filterRevGroups(${idx}, this.value)">
+                    </div>
+                    <div style="max-height:175px; overflow-y:auto; padding:2px 0;">
+                        ${checkboxesHtml || '<div style="padding:8px; color:#64748b; font-size:12px;">لا توجد مجموعات مستوردة بعد</div>'}
+                    </div>
+                    <div style="padding:6px; border-top:1px solid #e2e8f0; background:#f8fafc; display:flex; gap:6px; justify-content:space-between;">
+                        <button type="button" class="btn btn-success btn-sm" style="flex:1;" onclick="saveReviewerGroups(${idx}, this)">حفظ المجموعات ✔</button>
+                        <button type="button" class="btn btn-light btn-sm" onclick="toggleRevDropdown(${idx})">إغلاق</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderAdminUsers() {
+    const tbody = document.getElementById('adminUsersTable');
+    const roleOrder = { 'admin': 1, 'reviewer': 2, 'teacher': 3 };
+
+    const indexedUsers = APP_STATE.users.map((u, idx) => ({ u, idx }));
+    indexedUsers.sort((a, b) => (roleOrder[a.u.role] || 9) - (roleOrder[b.u.role] || 9));
+
+    const allGroupNames = Object.keys(APP_STATE.groups_meta);
+
+    tbody.innerHTML = indexedUsers.map(({ u, idx }) => {
+        let roleLabel = '';
+        if (u.role === 'admin') {
+            roleLabel = '<span class="badge badge-approved">أدمن (مدير)</span>';
+        } else if (u.role === 'reviewer') {
+            roleLabel = '<span class="badge badge-submitted">مراجع</span>';
+        } else {
+            roleLabel = '<span class="badge badge-draft">معلم</span>';
+            if (u.is_reviewer) roleLabel += ' <span class="badge badge-submitted">+ مراجع</span>';
+            if (u.is_admin) roleLabel += ' <span class="badge badge-approved">+ أدمن</span>';
+        }
+
+        let groupsCellHtml = '';
+        if (u.role === 'admin') {
+            groupsCellHtml = 'جميع الصلاحيات';
+        } else if (u.role === 'reviewer') {
+            groupsCellHtml = buildReviewerScopeWidget(u, idx, allGroupNames);
+        } else if (u.role === 'teacher') {
+            const teachGroupsText = Array.isArray(u.groups) && u.groups.length ? u.groups.join(' - ') : '-';
+            groupsCellHtml = `
+                <div style="text-align:right; font-size:12px;">
+                    <div style="margin-bottom:6px;"><b>مجموعات الرصد:</b> ${teachGroupsText}</div>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap; background:#f8fafc; padding:5px 8px; border-radius:6px; border:1px solid #e2e8f0;">
+                        <label style="display:inline-flex; align-items:center; gap:4px; cursor:pointer; font-weight:bold; color:#92400e;">
+                            <input type="checkbox" ${u.is_reviewer ? 'checked' : ''} onchange="toggleTeacherExtraRole(${idx}, 'reviewer', this.checked)">
+                            <span>ترقية كمراجع</span>
+                        </label>
+                        <label style="display:inline-flex; align-items:center; gap:4px; cursor:pointer; font-weight:bold; color:#166534;">
+                            <input type="checkbox" ${u.is_admin ? 'checked' : ''} onchange="toggleTeacherExtraRole(${idx}, 'admin', this.checked)">
+                            <span>ترقية كأدمن</span>
+                        </label>
+                    </div>
+                    ${u.is_reviewer ? buildReviewerScopeWidget(u, idx, allGroupNames) : ''}
+                </div>
+            `;
+        }
+
+        return `
+        <tr>
+            <td style="font-weight:bold;">${u.name}</td>
+            <td>${roleLabel}</td>
+            <td>
+                <div style="display:flex; align-items:center; justify-content:center; gap:5px;">
+                    <input type="text" id="userCodeInp_${idx}" class="code-edit-input" value="${u.code}">
+                    <button class="btn btn-primary btn-sm" onclick="saveUserRow(${idx}, this)">حفظ</button>
+                </div>
+            </td>
+            <td>${groupsCellHtml}</td>
+            <td>
+                <input type="text" id="userPhoneInp_${idx}" class="input-field" style="padding:5px; width:130px; text-align:center;" value="${u.phone || ''}" placeholder="010..." onchange="saveUserRow(${idx})">
+            </td>
+            <td>
+                ${u.role !== 'admin' ? `<button class="btn btn-wa btn-sm" onclick="sendCodeWhatsApp(${idx})">إرسال الكود واتساب</button>` : '-'}
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+async function toggleTeacherExtraRole(userIdx, extraType, isChecked) {
+    const u = APP_STATE.users[userIdx];
+    if (!u) return;
+    if (extraType === 'reviewer') {
+        u.is_reviewer = isChecked;
+        if (isChecked && u.review_groups === undefined) {
+            u.review_groups = 'ALL';
+        }
+    } else if (extraType === 'admin') {
+        u.is_admin = isChecked;
+    }
+    renderAdminUsers();
+    await saveState();
+}
+
+async function changeReviewerScope(userIdx, scopeVal) {
+    const u = APP_STATE.users[userIdx];
+    if (!u || (u.role !== 'reviewer' && !u.is_reviewer)) return;
+
+    let newVal = scopeVal;
+    if (scopeVal === 'CUSTOM') {
+        const existing = (u.role === 'reviewer') ? u.groups : u.review_groups;
+        newVal = Array.isArray(existing) ? existing : [];
+    }
+
+    if (u.role === 'reviewer') {
+        u.groups = newVal;
+    } else {
+        u.review_groups = newVal;
+    }
+
+    renderAdminUsers();
+    if (scopeVal === 'CUSTOM') {
+        const menu = document.getElementById(`revDropdownMenu_${userIdx}`);
+        if (menu) menu.classList.remove('hidden');
+    }
+    await saveState();
+}
+
+function toggleRevDropdown(userIdx) {
+    const menu = document.getElementById(`revDropdownMenu_${userIdx}`);
+    if (menu) menu.classList.toggle('hidden');
+}
+
+function filterRevGroups(userIdx, query) {
+    const q = query.trim();
+    document.querySelectorAll(`.rev-grp-item_${userIdx}`).forEach(lbl => {
+        const name = lbl.dataset.name || '';
+        lbl.style.display = (!q || name.includes(q)) ? 'flex' : 'none';
+    });
+}
+
+async function saveReviewerGroups(userIdx, btnEl) {
+    const u = APP_STATE.users[userIdx];
+    if (!u || (u.role !== 'reviewer' && !u.is_reviewer)) return;
+
+    const selected = [];
+    document.querySelectorAll(`.rev-grp-chk_${userIdx}:checked`).forEach(chk => {
+        selected.push(chk.value);
+    });
+
+    if (u.role === 'reviewer') {
+        u.groups = selected;
+    } else {
+        u.review_groups = selected;
+    }
+
+    if (btnEl) {
+        btnEl.textContent = 'جاري الحفظ...';
+        btnEl.disabled = true;
+    }
+
+    await saveState();
+    renderAdminUsers();
+    alert(`تم حفظ مجموعات المراجعة لـ (${u.name}) بنجاح ✔\nعدد المجموعات المحددة: ${selected.length}`);
+}
+
+async function saveUserRow(userIdx, btnEl) {
+    const codeInp = document.getElementById(`userCodeInp_${userIdx}`);
+    const phoneInp = document.getElementById(`userPhoneInp_${userIdx}`);
+    const cleanCode = codeInp.value.trim().toUpperCase();
+
+    if (!cleanCode) {
+        alert('لا يمكن ترك كود الدخول فارغاً!');
+        renderAdminUsers();
+        return;
+    }
+    const duplicate = APP_STATE.users.some((u, i) => i !== userIdx && u.code.toUpperCase() === cleanCode);
+    if (duplicate) {
+        alert(`الكود (${cleanCode}) مستخدم بالفعل لمستخدم آخر! يرجى اختيار كود مختلف.`);
+        renderAdminUsers();
+        return;
+    }
+
+    APP_STATE.users[userIdx].code = cleanCode;
+    if (phoneInp) {
+        APP_STATE.users[userIdx].phone = phoneInp.value.trim();
+    }
+
+    if (btnEl) {
+        btnEl.textContent = 'جاري...';
+        btnEl.disabled = true;
+    }
+
+    await saveState();
+    renderAdminUsers();
+    alert(`تم حفظ التعديل بنجاح ✔\nالاسم: ${APP_STATE.users[userIdx].name}\nالكود الجديد: ${cleanCode}`);
+}
+
+async function updateUserCode(userIdx, newCode) {
+    const clean = newCode.trim().toUpperCase();
+    if (!clean) {
+        alert('لا يمكن ترك كود الدخول فارغاً!');
+        renderAdminUsers();
+        return;
+    }
+    const duplicate = APP_STATE.users.some((u, i) => i !== userIdx && u.code.toUpperCase() === clean);
+    if (duplicate) {
+        alert(`الكود (${clean}) مستخدم بالفعل لمستخدم آخر! يرجى اختيار كود مختلف.`);
+        renderAdminUsers();
+        return;
+    }
+    APP_STATE.users[userIdx].code = clean;
+    await saveState();
+    renderAdminUsers();
+}
+
+async function updateUserPhone(userIdx, phone) {
+    if (APP_STATE.users[userIdx]) {
+        APP_STATE.users[userIdx].phone = phone.trim();
+        await saveState();
+    }
+}
+
+async function addReviewer() {
+    const name = document.getElementById('newRevName').value.trim();
+    const phone = document.getElementById('newRevPhone').value.trim();
+    if (!name) { alert('يرجى إدخال اسم المراجع'); return; }
+    let randCode = 'REV-' + Math.floor(100 + Math.random() * 900);
+    while (APP_STATE.users.some(u => u.code === randCode)) {
+        randCode = 'REV-' + Math.floor(100 + Math.random() * 900);
+    }
+    APP_STATE.users.push({ code: randCode, name, role: 'reviewer', groups: 'ALL', phone });
+    await saveState();
+    document.getElementById('newRevName').value = '';
+    document.getElementById('newRevPhone').value = '';
+    renderAdminUsers();
+    alert(`تمت إضافة المراجع بنجاح بكود: ${randCode}`);
+}
+
+function sendCodeWhatsApp(userIdx) {
+    const u = APP_STATE.users[userIdx];
+    if (!u || !u.phone) {
+        alert('يرجى إدخال رقم واتساب للمستخدم أولاً في الجدول!');
+        return;
+    }
+    const pageUrl = window.location.href.split('?')[0];
+    const roleText = u.role === 'teacher' ? 'رصد الدرجات' : 'مراجعة واعتماد الدرجات';
+    const msg = `السلام عليكم أ/ ${u.name}\nتم تفعيل حسابكم في منظومة ${roleText} بـ ${APP_STATE.settings.school_name}.\n\n🔗 رابط الدخول:\n${pageUrl}\n🔑 كود الدخول الخاص بكم: ${u.code}\n\nجزاكم الله خيراً.`;
+    openWhatsApp(u.phone, msg);
+}
+
+function openAdminEditGroup(groupName) {
+    const activeExam = APP_STATE.settings.active_exam;
+    if (activeExam === 'none') {
+        alert('يرجى اختيار اختبار نشط أولاً لعرض وتعديل درجاته.');
+        return;
+    }
+    adminEditingGroup = groupName;
+    const meta = APP_STATE.groups_meta[groupName];
+    document.getElementById('adminModalTitle').textContent = `تعديل درجات مجموعة: ${groupName} (${getExamLabel(activeExam)})`;
+    document.getElementById('thAdminExamCol').textContent = `درجة ${getExamLabel(activeExam)}`;
+    document.getElementById('thAdminAhkamCol').style.display = meta.has_ahkam ? '' : 'none';
+
+    const students = APP_STATE.students.filter(s => s.group === groupName);
+    document.getElementById('adminModalStudentsTable').innerHTML = students.map(s => `
+        <tr>
+            <td>${s.student_id}</td>
+            <td style="font-weight:bold;">${s.name}</td>
+            <td><input type="number" class="grade-input admin-exam-inp" data-sid="${s.student_id}" value="${s.scores[activeExam] ?? ''}"></td>
+            <td style="display:${meta.has_ahkam ? '' : 'none'}"><input type="number" class="grade-input admin-ahkam-inp" data-sid="${s.student_id}" value="${s.scores.ahkam ?? ''}"></td>
+        </tr>
+    `).join('');
+
+    document.getElementById('adminEditModal').classList.remove('hidden');
+}
+
+function closeAdminModal() {
+    document.getElementById('adminEditModal').classList.add('hidden');
+    adminEditingGroup = null;
+}
+
+async function saveAdminModalGrades() {
+    const activeExam = APP_STATE.settings.active_exam;
+    document.querySelectorAll('.admin-exam-inp').forEach(inp => {
+        const sid = inp.dataset.sid;
+        const st = APP_STATE.students.find(s => String(s.student_id) === String(sid));
+        if (st) st.scores[activeExam] = inp.value.trim();
+    });
+    document.querySelectorAll('.admin-ahkam-inp').forEach(inp => {
+        const sid = inp.dataset.sid;
+        const st = APP_STATE.students.find(s => String(s.student_id) === String(sid));
+        if (st) st.scores.ahkam = inp.value.trim();
+    });
+    await saveState();
+    alert('تم حفظ التعديلات الإدارية بنجاح!');
+    closeAdminModal();
+}
+
+async function adminResetGroupStatus(newStatus) {
+    const activeExam = APP_STATE.settings.active_exam;
+    if (!adminEditingGroup || activeExam === 'none') return;
+    const sub = getSubmissionRecord(activeExam, adminEditingGroup);
+    sub.status = newStatus;
+    await saveState();
+    renderAdminGroups();
+    alert('تمت إعادة فتح المجموعة للمعلم بنجاح.');
+    closeAdminModal();
+}
+
+// ==================== 4. استيراد وتصدير الإكسيل ====================
+function importExcelFile() {
+    const fileInput = document.getElementById('excelFileInput');
+    if (!fileInput.files.length) {
+        alert('يرجى اختيار ملف الإكسيل أولاً!');
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheetName = workbook.SheetNames.includes('tblStudents') ? 'tblStudents' : workbook.SheetNames[0];
+            const ws = workbook.Sheets[sheetName];
+            const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+            let headerIdx = 1;
+            for (let i = 0; i < Math.min(10, rows.length); i++) {
+                if (rows[i].some(c => String(c).includes('اسم الدارس') || String(c).includes('رقم الطالب'))) {
+                    headerIdx = i;
+                    break;
+                }
+            }
+
+            const newStudents = [];
+            const newGroupsMeta = {};
+            const teacherMap = {};
+
+            for (let r = headerIdx + 1; r < rows.length; r++) {
+                const row = rows[r];
+                const studentName = String(row[4] || '').trim();
+                const studentId = String(row[5] || '').trim();
+                if (!studentName && !studentId) continue;
+
+                const groupNum = String(row[0] || '').trim();
+                const level = String(row[1] || '').trim();
+                const section = String(row[2] || '').trim();
+                const groupName = String(row[3] || '').trim();
+                const teacherName = String(row[6] || '').trim();
+
+                const sExam1 = row[10] !== '' ? String(row[10]) : '';
+                const sExam2 = row[11] !== '' ? String(row[11]) : '';
+                const sExam3 = row[12] !== '' ? String(row[12]) : '';
+                const sExam4 = row[13] !== '' ? String(row[13]) : '';
+                const sAhkam = row[14] !== '' ? String(row[14]) : '';
+
+                newStudents.push({
+                    student_id: studentId || String(r),
+                    name: studentName,
+                    group: groupName,
+                    group_num: groupNum,
+                    level: level,
+                    section: section,
+                    teacher: teacherName,
+                    scores: { exam_1: sExam1, exam_2: sExam2, exam_3: sExam3, exam_4: sExam4, ahkam: sAhkam }
+                });
+
+                if (groupName) {
+                    if (!newGroupsMeta[groupName]) {
+                        const oldHasAhkam = APP_STATE.groups_meta[groupName]?.has_ahkam || (sAhkam !== '' && sAhkam !== '0');
+                        newGroupsMeta[groupName] = { group_num: groupNum, teacher: teacherName, has_ahkam: oldHasAhkam };
+                    }
+                    if (teacherName) {
+                        if (!teacherMap[teacherName]) teacherMap[teacherName] = new Set();
+                        teacherMap[teacherName].add(groupName);
+                    }
+                }
+            }
+
+            const preservedUsers = APP_STATE.users.filter(u => u.role === 'admin' || u.role === 'reviewer');
+            const existingTeachers = APP_STATE.users.filter(u => u.role === 'teacher');
+            const usedCodes = new Set(preservedUsers.map(u => u.code));
+
+            let tchCounter = 101;
+            Object.keys(teacherMap).forEach(tName => {
+                const oldT = existingTeachers.find(x => x.name === tName);
+                let assignedCode = oldT ? oldT.code : '';
+                if (!assignedCode || usedCodes.has(assignedCode)) {
+                    while (usedCodes.has(`TCH-${tchCounter}`)) {
+                        tchCounter++;
+                    }
+                    assignedCode = `TCH-${tchCounter++}`;
+                }
+                usedCodes.add(assignedCode);
+
+                preservedUsers.push({
+                    code: assignedCode,
+                    name: tName,
+                    role: 'teacher',
+                    groups: Array.from(teacherMap[tName]),
+                    phone: oldT ? oldT.phone : '',
+                    ...(oldT && oldT.is_reviewer ? { is_reviewer: true, review_groups: oldT.review_groups ?? 'ALL' } : {}),
+                    ...(oldT && oldT.is_admin ? { is_admin: true } : {})
+                });
+            });
+
+            APP_STATE.students = newStudents;
+            APP_STATE.groups_meta = newGroupsMeta;
+            APP_STATE.users = preservedUsers;
+
+            await saveState();
+            renderAdminGroups();
+            renderAdminUsers();
+            alert(`تم استيراد (${newStudents.length}) دارساً و (${Object.keys(teacherMap).length}) معلماً بأكواد فريدة بنجاح!`);
+        } catch (err) {
+            alert('حدث خطأ أثناء قراءة ملف الإكسيل: ' + err.message);
+        }
+    };
+    reader.readAsArrayBuffer(fileInput.files[0]);
+}
+
+function exportExcelFile() {
+    const extraExams = (APP_STATE.exams || []).filter(e => !['exam_1', 'exam_2', 'exam_3', 'exam_4'].includes(e.key));
+
+    const headerRow1 = ['بيانات الدارس', '', '', '', '', '', '', '', '', '', 'رصد درجات الامتحانات', '', '', '', ''];
+    const headerRow2 = [
+        'رقم المجموعة', 'المستوى', 'الفرقة', 'اسم المجموعة', 'اسم الدارس', 'رقم الطالب', 'معلم المجموعة',
+        '', '', '',
+        'الدوري الأول', 'نصف العام', 'الدوري الثاني', 'نهاية العام', 'الأحكام',
+        ...extraExams.map(e => e.label)
+    ];
+    const dataRows = [headerRow1, headerRow2];
+
+    APP_STATE.students.forEach(s => {
+        const extraVals = extraExams.map(e => {
+            const v = s.scores[e.key];
+            return v !== undefined && v !== '' ? (Number(v) || v) : '';
+        });
+        dataRows.push([
+            s.group_num,
+            s.level,
+            s.section,
+            s.group,
+            s.name,
+            s.student_id,
+            s.teacher,
+            '', '', '',
+            s.scores.exam_1 !== '' ? Number(s.scores.exam_1) || s.scores.exam_1 : '',
+            s.scores.exam_2 !== '' ? Number(s.scores.exam_2) || s.scores.exam_2 : '',
+            s.scores.exam_3 !== '' ? Number(s.scores.exam_3) || s.scores.exam_3 : '',
+            s.scores.exam_4 !== '' ? Number(s.scores.exam_4) || s.scores.exam_4 : '',
+            s.scores.ahkam !== '' ? Number(s.scores.ahkam) || s.scores.ahkam : '',
+            ...extraVals
+        ]);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(dataRows);
+    ws['!dir'] = 'rtl';
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'tblStudents');
+    XLSX.writeFile(wb, 'المدرسة_كاملة_محدثة.xlsx');
+}
+
+// ==================== 5. واجهة المعلم (Teacher) ====================
+function openTeacherView() {
+    document.getElementById('viewTeacher').classList.remove('hidden');
+    document.getElementById('teacherWelcome').textContent = `مرحباً أ/ ${currentUser.name}`;
+
+    const activeExam = APP_STATE.settings.active_exam;
+    if (activeExam === 'none') {
+        document.getElementById('teacherExamBanner').textContent = 'الحالة: الرصد مغلق حالياً';
+        document.getElementById('teacherClosedAlert').classList.remove('hidden');
+        document.getElementById('teacherGradingCard').classList.add('hidden');
+        return;
+    }
+
+    document.getElementById('teacherExamBanner').textContent = `الاختبار المتاح للرصد حالياً: ${getExamLabel(activeExam)}`;
+    document.getElementById('teacherClosedAlert').classList.add('hidden');
+    document.getElementById('teacherGradingCard').classList.remove('hidden');
+
+    const sel = document.getElementById('teacherGroupSelect');
+    const myGroups = currentUser.groups || [];
+    sel.innerHTML = myGroups.map(g => `<option value="${g}">${g}</option>`).join('');
+    renderTeacherStudents();
+}
+
+function renderTeacherStudents() {
+    const activeExam = APP_STATE.settings.active_exam;
+    const groupName = document.getElementById('teacherGroupSelect').value;
+    if (!groupName || activeExam === 'none') return;
+
+    const meta = APP_STATE.groups_meta[groupName] || { has_ahkam: false };
+    const sub = getSubmissionRecord(activeExam, groupName);
+    const isLocked = (sub.status === 'submitted' || sub.status === 'approved');
+
+    const statusBanner = document.getElementById('teacherGroupStatusBanner');
+    if (sub.status === 'approved') {
+        statusBanner.innerHTML = `<div class="alert-box alert-success"><b>تم اعتماد درجات هذه المجموعة نهائياً ✔</b> — لا يمكن التعديل عليها إلا من خلال إدارة المدرسة.</div>`;
+    } else if (sub.status === 'submitted') {
+        statusBanner.innerHTML = `<div class="alert-box alert-warning"><b>تم إرسال الدرجات للمراجعة ⏳</b> — التعديل مغلق لحين انتهاء المراجع من الاعتماد.</div>`;
+    } else if (sub.status === 'returned') {
+        statusBanner.innerHTML = `<div class="alert-box alert-danger"><b>تمت إعادة المجموعة من المراجع للتعديل ↩</b><br>ملاحظات المراجع: <u>${sub.note || 'يرجى مراجعة الدرجات'}</u></div>`;
+    } else {
+        statusBanner.innerHTML = `<div class="alert-box alert-info">يرجى إدخال درجات <b>${getExamLabel(activeExam)}</b> ثم الضغط على <b>«إرسال للاعتماد (Submit)»</b>.</div>`;
+    }
+
+    document.getElementById('thExamCol').textContent = `درجة ${getExamLabel(activeExam)}`;
+    const thAhkam = document.getElementById('thAhkamCol');
+    if (meta.has_ahkam) {
+        thAhkam.classList.remove('hidden');
+    } else {
+        thAhkam.classList.add('hidden');
+    }
+
+    const students = APP_STATE.students.filter(s => s.group === groupName);
+    document.getElementById('teacherStudentsTable').innerHTML = students.map(s => `
+        <tr>
+            <td>${s.student_id}</td>
+            <td style="font-weight:bold;">${s.name}</td>
+            <td>${s.level} / ${s.section}</td>
+            <td>
+                <input type="number" step="0.5" min="0" max="100" class="grade-input tch-exam-inp" data-sid="${s.student_id}" value="${s.scores[activeExam] ?? ''}" ${isLocked ? 'disabled' : ''}>
+            </td>
+            <td class="${meta.has_ahkam ? '' : 'hidden'}">
+                <input type="number" step="0.5" min="0" max="100" class="grade-input tch-ahkam-inp" data-sid="${s.student_id}" value="${s.scores.ahkam ?? ''}" ${isLocked ? 'disabled' : ''}>
+            </td>
+        </tr>
+    `).join('');
+
+    document.getElementById('btnSaveDraft').disabled = isLocked;
+    document.getElementById('btnSubmitGrades').disabled = isLocked;
+    if (sub.status === 'submitted') {
+        document.getElementById('btnNotifyReviewerWa').classList.remove('hidden');
+    } else {
+        document.getElementById('btnNotifyReviewerWa').classList.add('hidden');
+    }
+}
+
+async function saveTeacherGrades(isSubmit) {
+    const activeExam = APP_STATE.settings.active_exam;
+    const groupName = document.getElementById('teacherGroupSelect').value;
+    if (!groupName || activeExam === 'none') return;
+
+    if (isSubmit) {
+        const ok = confirm(`هل أنت متأكد من إرسال درجات مجموعة (${groupName}) للمراجعة؟\nلن تتمكن من التعديل بعد الإرسال إلا إذا أعادها المراجع.`);
+        if (!ok) return;
+    }
+
+    document.querySelectorAll('.tch-exam-inp').forEach(inp => {
+        const sid = inp.dataset.sid;
+        const st = APP_STATE.students.find(s => String(s.student_id) === String(sid));
+        if (st) st.scores[activeExam] = inp.value.trim();
+    });
+
+    document.querySelectorAll('.tch-ahkam-inp').forEach(inp => {
+        const sid = inp.dataset.sid;
+        const st = APP_STATE.students.find(s => String(s.student_id) === String(sid));
+        if (st) st.scores.ahkam = inp.value.trim();
+    });
+
+    const sub = getSubmissionRecord(activeExam, groupName);
+    sub.status = isSubmit ? 'submitted' : 'draft';
+    sub.updated_at = new Date().toLocaleString('ar-EG');
+
+    await saveState();
+    renderTeacherStudents();
+    alert(isSubmit ? 'تم إرسال الدرجات للمراجع بنجاح!' : 'تم حفظ المسودة بنجاح.');
+}
+
+function notifyReviewerWhatsApp() {
+    const activeExam = APP_STATE.settings.active_exam;
+    const groupName = document.getElementById('teacherGroupSelect').value;
+    const reviewer = APP_STATE.users.find(u => {
+        if (!u.phone) return false;
+        if (u.role === 'reviewer') {
+            return u.groups === 'ALL' || (Array.isArray(u.groups) && u.groups.includes(groupName));
+        }
+        if (u.is_reviewer) {
+            const rg = u.review_groups ?? 'ALL';
+            return rg === 'ALL' || (Array.isArray(rg) && rg.includes(groupName));
+        }
+        return false;
+    }) || APP_STATE.users.find(u => (u.role === 'reviewer' || u.is_reviewer) && u.phone);
+    if (!reviewer) {
+        alert('لم يتم تسجيل رقم واتساب للمراجع في النظام بعد.');
+        return;
+    }
+    const msg = `السلام عليكم، تم الانتهاء من رصد درجات مجموعة (${groupName}) في اختبار (${getExamLabel(activeExam)}) بواسطة أ/ ${currentUser.name}، وهي جاهزة للمراجعة والاعتماد.`;
+    openWhatsApp(reviewer.phone, msg);
+}
+
+// ==================== 6. واجهة المراجع (Reviewer) ====================
+function openReviewerView() {
+    document.getElementById('viewReviewer').classList.remove('hidden');
+    document.getElementById('reviewerWelcome').textContent = `مرحباً أ/ ${currentUser.name} (لجنة المراجعة)`;
+    const activeExam = APP_STATE.settings.active_exam;
+    document.getElementById('reviewerExamBanner').textContent = `الاختبار الجاري مراجعته: ${getExamLabel(activeExam)}`;
+    renderReviewerGroups();
+}
+
+function renderReviewerGroups() {
+    const container = document.getElementById('reviewerListContainer');
+    const activeExam = APP_STATE.settings.active_exam;
+    if (activeExam === 'none') {
+        container.innerHTML = `<div class="card alert-box alert-warning">لا يوجد اختبار مفتوح حالياً.</div>`;
+        return;
+    }
+
+    const myRevScope = (currentUser.role === 'reviewer') ? currentUser.groups : (currentUser.review_groups ?? 'ALL');
+    if (myRevScope === 'NONE' || (Array.isArray(myRevScope) && myRevScope.length === 0)) {
+        container.innerHTML = `<div class="card alert-box alert-warning">لا توجد مجموعات مسندة إليك للمراجعة حالياً (حالة المراجعة: ولا مجموعة).</div>`;
+        return;
+    }
+
+    const allGroupNames = Object.keys(APP_STATE.groups_meta);
+    const allowedGroups = myRevScope === 'ALL'
+        ? allGroupNames
+        : allGroupNames.filter(g => Array.isArray(myRevScope) && myRevScope.includes(g));
+
+    const submittedGroups = allowedGroups.filter(gName => {
+        const sub = getSubmissionRecord(activeExam, gName);
+        return sub.status === 'submitted' || sub.status === 'approved';
+    });
+
+    if (!submittedGroups.length) {
+        container.innerHTML = `<div class="card alert-box alert-info">لا توجد مجموعات مرسلة من المعلمين للمراجعة حتى الآن في (${getExamLabel(activeExam)}).</div>`;
+        return;
+    }
+
+    container.innerHTML = submittedGroups.map((gName, idx) => {
+        const meta = APP_STATE.groups_meta[gName];
+        const sub = getSubmissionRecord(activeExam, gName);
+        const students = APP_STATE.students.filter(s => s.group === gName);
+        const isApproved = sub.status === 'approved';
+
+        const rowsHtml = students.map(s => `
+            <tr>
+                <td>${s.student_id}</td>
+                <td style="font-weight:bold;">${s.name}</td>
+                <td style="font-weight:bold; color:#1f4e78;">${s.scores[activeExam] || '-'}</td>
+                ${meta.has_ahkam ? `<td style="font-weight:bold; color:#3730a3;">${s.scores.ahkam || '-'}</td>` : ''}
+            </tr>
+        `).join('');
+
+        return `
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+                <div>
+                    <h4 style="margin:0; color:#1f4e78;">مجموعة: ${gName} (المعلم: ${meta.teacher})</h4>
+                    <small style="color:#64748b;">تاريخ الإرسال: ${sub.updated_at || '-'}</small>
+                </div>
+                <div>${getStatusBadge(sub.status)}</div>
+            </div>
+
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>كود</th>
+                            <th>اسم الدارس</th>
+                            <th>درجة ${getExamLabel(activeExam)}</th>
+                            ${meta.has_ahkam ? '<th>درجة الأحكام</th>' : ''}
+                        </tr>
+                    </thead>
+                    <tbody>${rowsHtml}</tbody>
+                </table>
+            </div>
+
+            ${!isApproved ? `
+            <div style="margin-top:14px; background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #cbd5e1;">
+                <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:6px;">ملاحظات المراجع (تُكتب في حالة إعادة المجموعة للمعلم):</label>
+                <input type="text" id="revNote_${idx}" class="input-field" style="margin-bottom:10px;" placeholder="اكتب ملاحظاتك هنا إذا وجدت خطأ في الرصد...">
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button class="btn btn-success" onclick="reviewerApprove('${gName}')">اعتماد نهائي وحفظ ✔</button>
+                    <button class="btn btn-danger" onclick="reviewerReturn('${gName}', 'revNote_${idx}')">إعادة للمعلم للتعديل ↩</button>
+                </div>
+            </div>
+            ` : `
+            <div class="alert-box alert-success" style="margin-top:12px; margin-bottom:0;">
+                تم الاعتماد النهائي وحفظ الدرجات في قاعدة البيانات.
+            </div>
+            `}
+        </div>`;
+    }).join('');
+}
+
+async function reviewerApprove(groupName) {
+    const activeExam = APP_STATE.settings.active_exam;
+    if (!confirm(`هل تؤكد الاعتماد النهائي لدرجات مجموعة (${groupName})؟\nبعد الاعتماد لا يمكن التعديل إلا من خلال المدير.`)) return;
+
+    const sub = getSubmissionRecord(activeExam, groupName);
+    sub.status = 'approved';
+    sub.note = '';
+    sub.updated_at = new Date().toLocaleString('ar-EG');
+
+    await saveState();
+    renderReviewerGroups();
+    alert('تم اعتماد المجموعة وحفظها نهائياً!');
+}
+
+async function reviewerReturn(groupName, noteInputId) {
+    const activeExam = APP_STATE.settings.active_exam;
+    const note = document.getElementById(noteInputId).value.trim();
+    if (!note) {
+        alert('يرجى كتابة سبب الإرجاع في خانة الملاحظات أولاً ليتمكن المعلم من تعديله.');
+        return;
+    }
+
+    const sub = getSubmissionRecord(activeExam, groupName);
+    sub.status = 'returned';
+    sub.note = note;
+    sub.updated_at = new Date().toLocaleString('ar-EG');
+
+    await saveState();
+    renderReviewerGroups();
+
+    const meta = APP_STATE.groups_meta[groupName];
+    const teacherUser = APP_STATE.users.find(u => u.name === meta.teacher && u.role === 'teacher');
+    if (teacherUser && teacherUser.phone) {
+        if (confirm('تمت إعادة المجموعة للمعلم بنجاح.\nهل تود إرسال تنبيه بالملاحظة إلى المعلم عبر واتساب الآن؟')) {
+            const msg = `السلام عليكم أ/ ${teacherUser.name}\nتمت مراجعة درجات مجموعة (${groupName}) في اختبار (${getExamLabel(activeExam)})، ويوجد ملاحظة للتعديل:\n"${note}"\nيرجى الدخول على الرابط لإتمام التعديل.`;
+            openWhatsApp(teacherUser.phone, msg);
+        }
+    } else {
+        alert('تمت إعادة المجموعة للمعلم بنجاح وستظهر له الملاحظة فور دخوله.');
+    }
+}
+
+// ==================== 7. دوال واتساب والربط السحابي ====================
+function openWhatsApp(phone, messageText) {
+    let cleanPhone = String(phone).replace(/\D/g, '');
+    if (cleanPhone.startsWith('01') && cleanPhone.length === 11) {
+        cleanPhone = '2' + cleanPhone;
+    }
+    const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(messageText)}`;
+    window.open(waUrl, '_blank');
+}
+
+function saveFirebaseConfig() {
+    const raw = document.getElementById('firebaseConfigInput').value.trim();
+    try {
+        JSON.parse(raw);
+        localStorage.setItem('quran_fb_config', raw);
+        alert('تم حفظ إعدادات الربط السحابي! سيتم إعادة تحميل الصفحة لتفعيل الاتصال.');
+        location.reload();
+    } catch (e) {
+        alert('صيغة JSON غير صحيحة! يرجى التأكد من لصق كود الإعدادات بصيغة JSON صحيحة.');
+    }
+}
+
+function downloadCloudReadyHtml() {
+    const raw = document.getElementById('firebaseConfigInput').value.trim();
+    if (!raw) {
+        alert('يرجى لصق وحفظ إعدادات Firebase في المربع أعلاه أولاً!');
+        return;
+    }
+    try {
+        JSON.parse(raw);
+        const currentHtml = document.documentElement.outerHTML;
+        const updatedHtml = currentHtml.replace(
+            /const EMBEDDED_FIREBASE_CONFIG = \{[\s\S]*?\};/,
+            `const EMBEDDED_FIREBASE_CONFIG = ${raw};`
+        );
+        const blob = new Blob(['<!DOCTYPE html>\n' + updatedHtml], { type: 'text/html;charset=utf-8' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'index.html';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        alert('تم تحميل ملف index.html مدمجاً بالربط السحابي!\nارفعه الآن على Netlify أو Tiiny.host ليعمل على هواتف جميع المعلمين تلقائياً.');
+    } catch (e) {
+        alert('تأكد من صحة كود JSON الخاص بـ Firebase أولاً.');
+    }
+}
+
+function clearFirebaseConfig() {
+    localStorage.removeItem('quran_fb_config');
+    alert('تم العودة للوضع المحلي التجريبي.');
+    location.reload();
+}
+
+initStorage();
+</script>
+</body>
+</html>
