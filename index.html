@@ -209,8 +209,13 @@
     <div id="viewLogin" class="card login-box">
         <h2>تسجيل الدخول للنظام</h2>
         <p style="color:#64748b; font-size:13px; margin-bottom:18px;">أدخل كود الدخول الخاص بك (معلم / مراجع / مدير)</p>
-        <input type="text" id="loginCodeInput" autocomplete="off" onkeydown="if(event.key==='Enter') handleLogin()" class="input-field" style="text-align:center; font-size:18px; font-weight:bold; letter-spacing:1px; margin-bottom:12px;" placeholder="اكتب كود الدخول">
+        <input type="text" id="loginCodeInput" autocomplete="off" onkeydown="if(event.key==='Enter') handleLogin()" class="input-field" style="text-align:center; font-size:18px; font-weight:bold; letter-spacing:1px; margin-bottom:10px;" placeholder="اكتب كود الدخول">
+        <label style="display:flex; align-items:center; justify-content:center; gap:7px; margin-bottom:14px; font-size:13px; color:#334155; cursor:pointer; user-select:none;">
+            <input type="checkbox" id="rememberMeChk" checked style="width:16px; height:16px; accent-color:#1f4e78;">
+            <span>تذكرني (حفظ كود الدخول على هذا الجهاز للدخول مباشرة)</span>
+        </label>
         <button class="btn btn-primary" style="width:100%; padding:12px; font-size:15px;" onclick="handleLogin()">دخول</button>
+        <div id="autoLoginHint" class="hidden" style="margin-top:10px; font-size:12.5px; color:#155e3b; font-weight:bold;">جاري تسجيل الدخول التلقائي بالكود المحفوظ...</div>
         <div id="loginError" class="alert-box alert-danger hidden" style="margin-top:12px;"></div>
     </div>
 
@@ -268,15 +273,43 @@
         <div id="tabUsers" class="card hidden">
             <h3 style="margin-top:0; color:#1f4e78;">إدارة الأكواد والمعلمين والمراجعين</h3>
             <div class="alert-box alert-info">
-                <b>تعديل الأكواد يدوياً:</b> يمكنك تغيير أي كود في عمود <b>«كود الدخول»</b> مباشرة بالكتابة داخله، وسيتم حفظه تلقائياً بمجرد الخروج من الخانة.
+                <b>تعديل الأكواد والمجموعات:</b> يمكنك إضافة معلمين جدد وإسناد مجموعات إليهم (وتُزال المجموعة تلقائياً من المعلم السابق)، أو تعديل مجموعات أي معلم حالي، أو حذف معلم/مراجع.
             </div>
-            
-            <div style="background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #cbd5e1; margin-bottom:16px;">
-                <h4 style="margin:0 0 8px 0;">إضافة مراجع جديد:</h4>
-                <div class="grid-3">
-                    <input type="text" id="newRevName" class="input-field" placeholder="اسم المراجع">
-                    <input type="text" id="newRevPhone" class="input-field" placeholder="رقم الواتساب (010...)">
-                    <button class="btn btn-primary" onclick="addReviewer()">+ إضافة مراجع وتوليد كود</button>
+
+            <div class="grid-2" style="margin-bottom:16px;">
+                <!-- إضافة معلم جديد وإسناد مجموعات إليه -->
+                <div style="background:#f0fdf4; padding:12px; border-radius:10px; border:1px solid #86efac;">
+                    <h4 style="margin:0 0 8px 0; color:#155e3b;">+ إضافة معلم جديد وإسناد مجموعات:</h4>
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                        <input type="text" id="newTchName" class="input-field" placeholder="اسم المعلم الجديد">
+                        <input type="text" id="newTchPhone" class="input-field" placeholder="رقم الواتساب (010...)">
+                        <div style="position:relative;">
+                            <button type="button" class="btn btn-light btn-sm" style="width:100%; justify-content:space-between; border:1px solid #86efac; background:#fff; padding:8px 10px;" onclick="toggleNewTeacherGroupsDropdown()">
+                                <span id="newTchGroupsSummary" style="font-size:12px; color:#155e3b;">اختيار المجموعات المسندة للمعلم (اختياري)...</span>
+                                <span>▼</span>
+                            </button>
+                            <div id="newTchGroupsMenu" class="hidden" style="margin-top:4px; background:#fff; border:1.5px solid #155e3b; border-radius:8px; box-shadow:0 6px 18px rgba(0,0,0,0.12); text-align:right;">
+                                <div style="padding:6px; border-bottom:1px solid #e2e8f0; background:#f8fafc;">
+                                    <input type="text" class="input-field" style="padding:5px 8px; font-size:12px;" placeholder="ابحث باسم المجموعة..." oninput="filterNewTchGroups(this.value)">
+                                </div>
+                                <div id="newTchGroupsList" style="max-height:170px; overflow-y:auto; padding:2px 0;"></div>
+                                <div style="padding:6px; border-top:1px solid #e2e8f0; background:#f8fafc; text-align:left;">
+                                    <button type="button" class="btn btn-light btn-sm" onclick="toggleNewTeacherGroupsDropdown()">تم ✔</button>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn btn-success" onclick="addTeacher()">+ إضافة المعلم وتوليد كود</button>
+                    </div>
+                </div>
+
+                <!-- إضافة مراجع جديد -->
+                <div style="background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #cbd5e1;">
+                    <h4 style="margin:0 0 8px 0; color:#1f4e78;">+ إضافة مراجع جديد:</h4>
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                        <input type="text" id="newRevName" class="input-field" placeholder="اسم المراجع">
+                        <input type="text" id="newRevPhone" class="input-field" placeholder="رقم الواتساب (010...)">
+                        <button class="btn btn-primary" onclick="addReviewer()">+ إضافة مراجع وتوليد كود</button>
+                    </div>
                 </div>
             </div>
 
@@ -286,10 +319,10 @@
                         <tr>
                             <th>الاسم</th>
                             <th>الصفة</th>
-                            <th>كود الدخول (قابل للتعديل)</th>
-                            <th>المجموعات المسندة</th>
+                            <th>كود الدخول</th>
+                            <th>المجموعات والصلاحيات</th>
                             <th>رقم الواتساب</th>
-                            <th>إرسال واتساب</th>
+                            <th>إجراءات</th>
                         </tr>
                     </thead>
                     <tbody id="adminUsersTable"></tbody>
@@ -531,29 +564,50 @@ async function saveState() {
 }
 
 // ==================== 2. تسجيل الدخول ====================
-async function handleLogin() {
+async function handleLogin(isAuto = false) {
     const code = document.getElementById('loginCodeInput').value.trim().toUpperCase();
     const errEl = document.getElementById('loginError');
+    const hintEl = document.getElementById('autoLoginHint');
     errEl.classList.add('hidden');
 
     if (!code) {
-        errEl.textContent = 'يرجى إدخال كود الدخول.';
-        errEl.classList.remove('hidden');
+        if (!isAuto) {
+            errEl.textContent = 'يرجى إدخال كود الدخول.';
+            errEl.classList.remove('hidden');
+        }
         return;
     }
+
+    if (isAuto && hintEl) hintEl.classList.remove('hidden');
 
     try {
         await loadState();
     } catch (err) {
+        if (hintEl) hintEl.classList.add('hidden');
         errEl.innerHTML = 'تعذر الاتصال بقاعدة البيانات السحابية: ' + err.message + '<br>تأكد من تفعيل Rules في Firestore (allow read, write: if true;)';
         errEl.classList.remove('hidden');
         return;
     }
+
+    if (hintEl) hintEl.classList.add('hidden');
+
     const user = APP_STATE.users.find(u => u.code.toUpperCase() === code);
     if (!user) {
-        errEl.textContent = 'كود الدخول غير صحيح! يرجى التأكد من الكود أو مراجعة الإدارة.';
-        errEl.classList.remove('hidden');
+        if (isAuto) {
+            localStorage.removeItem('alhamd_saved_code');
+            document.getElementById('loginCodeInput').value = '';
+        } else {
+            errEl.textContent = 'كود الدخول غير صحيح! يرجى التأكد من الكود أو مراجعة الإدارة.';
+            errEl.classList.remove('hidden');
+        }
         return;
+    }
+
+    const rememberChk = document.getElementById('rememberMeChk');
+    if (rememberChk && rememberChk.checked) {
+        localStorage.setItem('alhamd_saved_code', code);
+    } else {
+        localStorage.removeItem('alhamd_saved_code');
     }
 
     currentUser = user;
@@ -638,6 +692,9 @@ async function submitChangeMyCode() {
     if (idx !== -1) {
         APP_STATE.users[idx].code = newVal;
         currentUser.code = newVal;
+        if (localStorage.getItem('alhamd_saved_code')) {
+            localStorage.setItem('alhamd_saved_code', newVal);
+        }
         await saveState();
         closeChangeMyCodeModal();
         alert(`تم تغيير كود الدخول بنجاح إلى: ${newVal} ✔`);
@@ -646,6 +703,7 @@ async function submitChangeMyCode() {
 
 function logout() {
     currentUser = null;
+    localStorage.removeItem('alhamd_saved_code');
     document.getElementById('loginCodeInput').value = '';
     document.getElementById('viewAdmin').classList.add('hidden');
     document.getElementById('viewTeacher').classList.add('hidden');
@@ -812,6 +870,248 @@ function buildReviewerScopeWidget(u, idx, allGroupNames) {
     `;
 }
 
+function renderNewTeacherGroupsList() {
+    const listEl = document.getElementById('newTchGroupsList');
+    if (!listEl) return;
+    const allGroupNames = Object.keys(APP_STATE.groups_meta);
+    if (!allGroupNames.length) {
+        listEl.innerHTML = '<div style="padding:8px; color:#64748b; font-size:12px;">لا توجد مجموعات متاحة حالياً</div>';
+        return;
+    }
+    listEl.innerHTML = allGroupNames.map(gName => {
+        const curTch = APP_STATE.groups_meta[gName]?.teacher || '';
+        return `
+        <label class="new-tch-grp-item" data-name="${gName}" style="display:flex; align-items:center; justify-content:space-between; gap:6px; padding:5px 8px; border-bottom:1px solid #f1f5f9; font-size:12px; cursor:pointer;">
+            <span style="display:flex; align-items:center; gap:6px;">
+                <input type="checkbox" class="new-tch-grp-chk" value="${gName}" onchange="updateNewTeacherGroupsSummary()">
+                <b>${gName}</b>
+            </span>
+            <small style="color:#64748b;">${curTch ? `(حالياً: ${curTch})` : '(بدون معلم)'}</small>
+        </label>`;
+    }).join('');
+}
+
+function toggleNewTeacherGroupsDropdown() {
+    const menu = document.getElementById('newTchGroupsMenu');
+    if (!menu) return;
+    if (menu.classList.contains('hidden')) {
+        renderNewTeacherGroupsList();
+    }
+    menu.classList.toggle('hidden');
+}
+
+function filterNewTchGroups(query) {
+    const q = query.trim();
+    document.querySelectorAll('.new-tch-grp-item').forEach(lbl => {
+        const name = lbl.dataset.name || '';
+        lbl.style.display = (!q || name.includes(q)) ? 'flex' : 'none';
+    });
+}
+
+function updateNewTeacherGroupsSummary() {
+    const selected = Array.from(document.querySelectorAll('.new-tch-grp-chk:checked')).map(c => c.value);
+    const sumEl = document.getElementById('newTchGroupsSummary');
+    if (!sumEl) return;
+    sumEl.textContent = selected.length > 0
+        ? `المجموعات المختارة (${selected.length}): ${selected.join('، ')}`
+        : 'اختيار المجموعات المسندة للمعلم (اختياري)...';
+}
+
+function buildTeacherGroupsWidget(u, idx, allGroupNames) {
+    const currentGroups = Array.isArray(u.groups) ? u.groups : [];
+    const selectedSet = new Set(currentGroups);
+    const teachGroupsText = currentGroups.length ? currentGroups.join(' - ') : 'لا توجد مجموعات مسندة';
+
+    const checkboxesHtml = allGroupNames.map(gName => {
+        const curTch = APP_STATE.groups_meta[gName]?.teacher || '';
+        const otherNote = (curTch && curTch !== u.name) ? ` (ستُنقل من: ${curTch})` : '';
+        return `
+        <label class="tch-grp-item_${idx}" data-name="${gName}" style="display:flex; align-items:center; justify-content:space-between; gap:6px; padding:5px 8px; border-bottom:1px solid #f1f5f9; font-size:12px; cursor:pointer;">
+            <span style="display:flex; align-items:center; gap:6px;">
+                <input type="checkbox" class="tch-grp-chk_${idx}" value="${gName}" ${selectedSet.has(gName) ? 'checked' : ''}>
+                <b>${gName}</b>
+            </span>
+            <small style="color:#b45309;">${otherNote}</small>
+        </label>`;
+    }).join('');
+
+    return `
+        <div style="margin-bottom:6px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; flex-wrap:wrap;">
+                <span><b>مجموعات الرصد:</b> ${teachGroupsText}</span>
+                <button type="button" class="btn btn-light btn-sm" style="border:1px solid #93c5fd; background:#eff6ff; color:#1f4e78;" onclick="toggleTchGroupsDropdown(${idx})">تعديل المجموعات ✎</button>
+            </div>
+            <div id="tchGroupsDropdown_${idx}" class="hidden" style="margin-top:5px; background:#ffffff; border:1.5px solid #155e3b; border-radius:8px; box-shadow:0 6px 18px rgba(0,0,0,0.14); text-align:right; z-index:50;">
+                <div style="padding:6px; border-bottom:1px solid #e2e8f0; background:#f8fafc;">
+                    <input type="text" class="input-field" style="padding:5px 8px; font-size:12px;" placeholder="ابحث باسم المجموعة..." oninput="filterTchGroups(${idx}, this.value)">
+                </div>
+                <div style="max-height:175px; overflow-y:auto; padding:2px 0;">
+                    ${checkboxesHtml || '<div style="padding:8px; color:#64748b; font-size:12px;">لا توجد مجموعات مستوردة بعد</div>'}
+                </div>
+                <div style="padding:6px; border-top:1px solid #e2e8f0; background:#f8fafc; display:flex; gap:6px;">
+                    <button type="button" class="btn btn-success btn-sm" style="flex:1;" onclick="saveTeacherAssignedGroups(${idx}, this)">حفظ ونقل المجموعات ✔</button>
+                    <button type="button" class="btn btn-light btn-sm" onclick="toggleTchGroupsDropdown(${idx})">إغلاق</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function toggleTchGroupsDropdown(userIdx) {
+    const el = document.getElementById(`tchGroupsDropdown_${userIdx}`);
+    if (el) el.classList.toggle('hidden');
+}
+
+function filterTchGroups(userIdx, query) {
+    const q = query.trim();
+    document.querySelectorAll(`.tch-grp-item_${userIdx}`).forEach(lbl => {
+        const name = lbl.dataset.name || '';
+        lbl.style.display = (!q || name.includes(q)) ? 'flex' : 'none';
+    });
+}
+
+// إسناد مجموعات لمعلم وإلغاؤها تلقائياً من عند المعلم السابق وتحديث بيانات المجموعات والطلاب
+function applyTeacherGroupAssignment(targetTeacherIdx, selectedGroups) {
+    const targetTeacher = APP_STATE.users[targetTeacherIdx];
+    if (!targetTeacher) return;
+
+    const selectedSet = new Set(selectedGroups);
+
+    // 1. إزالة المجموعات المختارة من أي معلم آخر كانت بيده
+    APP_STATE.users.forEach((u, i) => {
+        if (i !== targetTeacherIdx && u.role === 'teacher' && Array.isArray(u.groups)) {
+            u.groups = u.groups.filter(g => !selectedSet.has(g));
+        }
+    });
+
+    // 2. إذا كانت هناك مجموعات أُزيلت من هذا المعلم نفسه، نفرغ اسم المعلم منها في groups_meta
+    const oldGroups = Array.isArray(targetTeacher.groups) ? targetTeacher.groups : [];
+    oldGroups.forEach(g => {
+        if (!selectedSet.has(g) && APP_STATE.groups_meta[g] && APP_STATE.groups_meta[g].teacher === targetTeacher.name) {
+            APP_STATE.groups_meta[g].teacher = '';
+        }
+    });
+
+    // 3. تحديث اسم المعلم في groups_meta وفي سجل الطلاب لكل مجموعة مسندة
+    selectedGroups.forEach(g => {
+        if (APP_STATE.groups_meta[g]) {
+            APP_STATE.groups_meta[g].teacher = targetTeacher.name;
+        }
+        APP_STATE.students.forEach(s => {
+            if (s.group === g) {
+                s.teacher = targetTeacher.name;
+            }
+        });
+    });
+
+    // 4. حفظ قائمة المجموعات للمعلم المستهدف
+    targetTeacher.groups = selectedGroups;
+}
+
+async function saveTeacherAssignedGroups(userIdx, btnEl) {
+    const u = APP_STATE.users[userIdx];
+    if (!u || u.role !== 'teacher') return;
+
+    const selected = [];
+    document.querySelectorAll(`.tch-grp-chk_${userIdx}:checked`).forEach(chk => {
+        selected.push(chk.value);
+    });
+
+    if (btnEl) {
+        btnEl.textContent = 'جاري الحفظ...';
+        btnEl.disabled = true;
+    }
+
+    applyTeacherGroupAssignment(userIdx, selected);
+    await saveState();
+    renderAdminGroups();
+    renderAdminUsers();
+    alert(`تم تحديث مجموعات المعلم أ/ ${u.name} بنجاح ✔\nونُقلت المجموعات المختارة إليه تلقائياً.`);
+}
+
+async function addTeacher() {
+    const name = document.getElementById('newTchName').value.trim();
+    const phone = document.getElementById('newTchPhone').value.trim();
+    if (!name) {
+        alert('يرجى إدخال اسم المعلم الجديد أولاً!');
+        return;
+    }
+
+    const selectedGroups = Array.from(document.querySelectorAll('.new-tch-grp-chk:checked')).map(c => c.value);
+
+    let randCode = 'TCH-' + Math.floor(100 + Math.random() * 900);
+    while (APP_STATE.users.some(u => u.code.toUpperCase() === randCode)) {
+        randCode = 'TCH-' + Math.floor(100 + Math.random() * 900);
+    }
+
+    const newTeacher = {
+        code: randCode,
+        name: name,
+        role: 'teacher',
+        groups: [],
+        phone: phone
+    };
+
+    APP_STATE.users.push(newTeacher);
+    const newIdx = APP_STATE.users.length - 1;
+
+    if (selectedGroups.length > 0) {
+        applyTeacherGroupAssignment(newIdx, selectedGroups);
+    }
+
+    await saveState();
+    document.getElementById('newTchName').value = '';
+    document.getElementById('newTchPhone').value = '';
+    document.getElementById('newTchGroupsMenu').classList.add('hidden');
+    document.getElementById('newTchGroupsSummary').textContent = 'اختيار المجموعات المسندة للمعلم (اختياري)...';
+
+    renderAdminGroups();
+    renderAdminUsers();
+
+    const grpNote = selectedGroups.length > 0
+        ? `\nوتم إسناد (${selectedGroups.length}) مجموعة إليه وإلغاؤها من المعلمين السابقين تلقائياً.`
+        : '';
+    alert(`تمت إضافة المعلم أ/ ${name} بنجاح ✔\nكود الدخول: ${randCode}${grpNote}`);
+}
+
+async function deleteUser(userIdx) {
+    const u = APP_STATE.users[userIdx];
+    if (!u) return;
+    if (u.role === 'admin') {
+        alert('لا يمكن حذف حساب المدير الرئيسي!');
+        return;
+    }
+
+    const roleName = u.role === 'teacher' ? 'المعلم' : 'المراجع';
+    const hasGroups = (u.role === 'teacher' && Array.isArray(u.groups) && u.groups.length > 0);
+    const extraWarn = hasGroups
+        ? `\nتنبيه: لدى هذا المعلم (${u.groups.length}) مجموعة مسندة (${u.groups.join('، ')})، وستصبح بدون معلم لحين إسنادها لمعلم آخر.`
+        : '';
+
+    if (!confirm(`هل أنت متأكد من حذف ${roleName}: (${u.name}) نهائياً؟${extraWarn}`)) {
+        return;
+    }
+
+    if (hasGroups) {
+        u.groups.forEach(g => {
+            if (APP_STATE.groups_meta[g] && APP_STATE.groups_meta[g].teacher === u.name) {
+                APP_STATE.groups_meta[g].teacher = '';
+            }
+            APP_STATE.students.forEach(s => {
+                if (s.group === g && s.teacher === u.name) {
+                    s.teacher = '';
+                }
+            });
+        });
+    }
+
+    APP_STATE.users.splice(userIdx, 1);
+    await saveState();
+    renderAdminGroups();
+    renderAdminUsers();
+    alert(`تم حذف ${roleName} (${u.name}) بنجاح ✔`);
+}
+
 function renderAdminUsers() {
     const tbody = document.getElementById('adminUsersTable');
     const roleOrder = { 'admin': 1, 'reviewer': 2, 'teacher': 3 };
@@ -839,10 +1139,9 @@ function renderAdminUsers() {
         } else if (u.role === 'reviewer') {
             groupsCellHtml = buildReviewerScopeWidget(u, idx, allGroupNames);
         } else if (u.role === 'teacher') {
-            const teachGroupsText = Array.isArray(u.groups) && u.groups.length ? u.groups.join(' - ') : '-';
             groupsCellHtml = `
                 <div style="text-align:right; font-size:12px;">
-                    <div style="margin-bottom:6px;"><b>مجموعات الرصد:</b> ${teachGroupsText}</div>
+                    ${buildTeacherGroupsWidget(u, idx, allGroupNames)}
                     <div style="display:flex; gap:10px; flex-wrap:wrap; background:#f8fafc; padding:5px 8px; border-radius:6px; border:1px solid #e2e8f0;">
                         <label style="display:inline-flex; align-items:center; gap:4px; cursor:pointer; font-weight:bold; color:#92400e;">
                             <input type="checkbox" ${u.is_reviewer ? 'checked' : ''} onchange="toggleTeacherExtraRole(${idx}, 'reviewer', this.checked)">
@@ -858,6 +1157,13 @@ function renderAdminUsers() {
             `;
         }
 
+        const actionsHtml = u.role !== 'admin'
+            ? `<div style="display:flex; flex-direction:column; gap:5px; align-items:center;">
+                <button class="btn btn-wa btn-sm" style="width:100%;" onclick="sendCodeWhatsApp(${idx})">إرسال الكود واتساب</button>
+                <button class="btn btn-danger btn-sm" style="width:100%;" onclick="deleteUser(${idx})">حذف 🗑</button>
+               </div>`
+            : '-';
+
         return `
         <tr>
             <td style="font-weight:bold;">${u.name}</td>
@@ -870,90 +1176,11 @@ function renderAdminUsers() {
             </td>
             <td>${groupsCellHtml}</td>
             <td>
-                <input type="text" id="userPhoneInp_${idx}" class="input-field" style="padding:5px; width:130px; text-align:center;" value="${u.phone || ''}" placeholder="010..." onchange="saveUserRow(${idx})">
+                <input type="text" id="userPhoneInp_${idx}" class="input-field" style="padding:5px; width:125px; text-align:center;" value="${u.phone || ''}" placeholder="010..." onchange="saveUserRow(${idx})">
             </td>
-            <td>
-                ${u.role !== 'admin' ? `<button class="btn btn-wa btn-sm" onclick="sendCodeWhatsApp(${idx})">إرسال الكود واتساب</button>` : '-'}
-            </td>
+            <td>${actionsHtml}</td>
         </tr>`;
     }).join('');
-}
-
-async function toggleTeacherExtraRole(userIdx, extraType, isChecked) {
-    const u = APP_STATE.users[userIdx];
-    if (!u) return;
-    if (extraType === 'reviewer') {
-        u.is_reviewer = isChecked;
-        if (isChecked && u.review_groups === undefined) {
-            u.review_groups = 'ALL';
-        }
-    } else if (extraType === 'admin') {
-        u.is_admin = isChecked;
-    }
-    renderAdminUsers();
-    await saveState();
-}
-
-async function changeReviewerScope(userIdx, scopeVal) {
-    const u = APP_STATE.users[userIdx];
-    if (!u || (u.role !== 'reviewer' && !u.is_reviewer)) return;
-
-    let newVal = scopeVal;
-    if (scopeVal === 'CUSTOM') {
-        const existing = (u.role === 'reviewer') ? u.groups : u.review_groups;
-        newVal = Array.isArray(existing) ? existing : [];
-    }
-
-    if (u.role === 'reviewer') {
-        u.groups = newVal;
-    } else {
-        u.review_groups = newVal;
-    }
-
-    renderAdminUsers();
-    if (scopeVal === 'CUSTOM') {
-        const menu = document.getElementById(`revDropdownMenu_${userIdx}`);
-        if (menu) menu.classList.remove('hidden');
-    }
-    await saveState();
-}
-
-function toggleRevDropdown(userIdx) {
-    const menu = document.getElementById(`revDropdownMenu_${userIdx}`);
-    if (menu) menu.classList.toggle('hidden');
-}
-
-function filterRevGroups(userIdx, query) {
-    const q = query.trim();
-    document.querySelectorAll(`.rev-grp-item_${userIdx}`).forEach(lbl => {
-        const name = lbl.dataset.name || '';
-        lbl.style.display = (!q || name.includes(q)) ? 'flex' : 'none';
-    });
-}
-
-async function saveReviewerGroups(userIdx, btnEl) {
-    const u = APP_STATE.users[userIdx];
-    if (!u || (u.role !== 'reviewer' && !u.is_reviewer)) return;
-
-    const selected = [];
-    document.querySelectorAll(`.rev-grp-chk_${userIdx}:checked`).forEach(chk => {
-        selected.push(chk.value);
-    });
-
-    if (u.role === 'reviewer') {
-        u.groups = selected;
-    } else {
-        u.review_groups = selected;
-    }
-
-    if (btnEl) {
-        btnEl.textContent = 'جاري الحفظ...';
-        btnEl.disabled = true;
-    }
-
-    await saveState();
-    renderAdminUsers();
-    alert(`تم حفظ مجموعات المراجعة لـ (${u.name}) بنجاح ✔\nعدد المجموعات المحددة: ${selected.length}`);
 }
 
 async function saveUserRow(userIdx, btnEl) {
@@ -1572,6 +1799,16 @@ function clearFirebaseConfig() {
 }
 
 initStorage();
+(function checkAutoLogin() {
+    const savedCode = localStorage.getItem('alhamd_saved_code');
+    if (savedCode) {
+        const inp = document.getElementById('loginCodeInput');
+        if (inp) {
+            inp.value = savedCode;
+            handleLogin(true);
+        }
+    }
+})();
 </script>
 </body>
 </html>
