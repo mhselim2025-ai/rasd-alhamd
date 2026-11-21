@@ -372,7 +372,7 @@
         <div class="card">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
                 <div>
-                    <h3 id="teacherWelcome" style="margin:0; color:#1f4e78;">مرحباً أ/ ...</h3>
+                    <h3 id="teacherWelcome" style="margin:0; color:#1f4e78;">مرحبا فضيلة الشيخ/ة/ ...</h3>
                     <div id="teacherExamBanner" style="margin-top:6px; font-weight:bold; color:#155e3b;"></div>
                 </div>
                 <div style="min-width:220px;">
@@ -1482,7 +1482,7 @@ function exportExcelFile() {
 // ==================== 5. واجهة المعلم (Teacher) ====================
 function openTeacherView() {
     document.getElementById('viewTeacher').classList.remove('hidden');
-    document.getElementById('teacherWelcome').textContent = `مرحباً أ/ ${currentUser.name}`;
+    document.getElementById('teacherWelcome').textContent = `مرحباً فضيلة الشيخ/ة/ ${currentUser.name}`;
 
     const activeExam = APP_STATE.settings.active_exam;
     if (activeExam === 'none') {
@@ -1610,7 +1610,7 @@ function notifyReviewerWhatsApp() {
 // ==================== 6. واجهة المراجع (Reviewer) ====================
 function openReviewerView() {
     document.getElementById('viewReviewer').classList.remove('hidden');
-    document.getElementById('reviewerWelcome').textContent = `مرحباً أ/ ${currentUser.name} (لجنة المراجعة)`;
+    document.getElementById('reviewerWelcome').textContent = `مرحباً فضيلة الشيخ/ة/ ${currentUser.name} (لجنة المراجعة)`;
     const activeExam = APP_STATE.settings.active_exam;
     document.getElementById('reviewerExamBanner').textContent = `الاختبار الجاري مراجعته: ${getExamLabel(activeExam)}`;
     renderReviewerGroups();
