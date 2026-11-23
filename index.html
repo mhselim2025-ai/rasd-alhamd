@@ -643,17 +643,20 @@
     <div id="giftStudioModal" class="card hidden" style="border:2.5px solid #d97706; background:#fffbeb;">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px; border-bottom:1px solid #fde68a; padding-bottom:10px;">
             <div>
-                <h3 style="margin:0; color:#92400e;">🎖 استوديو الإهداء وشهادات التقدير الفورية</h3>
-                <small style="color:#78350f;">اختر القالب والمقاس واكتب اسم الدارس وسبب التكريم، ثم احفظها PDF أو شاركها مباشرة</small>
+                <h3 style="margin:0; color:#92400e;">🎖 استوديو الإهداء وشهادات التقدير (فردي أو دفعة واحدة)</h3>
+                <small style="color:#78350f;">جميع خانات الشهادة والشعارات قابلة للتعديل الكامل، ويمكنك تحديد أكثر من طالب وإصدار شهاداتهم دفعة واحدة</small>
             </div>
             <button class="btn btn-light btn-sm" onclick="closeGiftStudioModal()">إغلاق ✖</button>
         </div>
 
-        <!-- قسم إضافة قوالب جديدة (يظهر للأدمن الرئيسي فقط!) -->
+        <!-- قسم إدارة القوالب والشعارات الرسمية (يظهر للأدمن الرئيسي فقط) -->
         <div id="adminGiftTemplatesManager" class="hidden" style="background:#ffffff; border:1.5px dashed #1f4e78; border-radius:10px; padding:12px; margin-bottom:14px;">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-                <b style="color:#1f4e78; font-size:13px;">⚙️ إدارة قوالب الشهادات (صلاحية المدير العام فقط):</b>
-                <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('newGiftTemplateForm').classList.toggle('hidden')">+ إضافة قالب شهادة جديد</button>
+                <b style="color:#1f4e78; font-size:13px;">⚙️ إدارة القوالب والشعارات الرسمية (صلاحية المدير العام فقط):</b>
+                <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                    <button type="button" class="btn btn-success btn-sm" onclick="saveCurrentLogosAsSchoolDefault()">💾 اعتماد الشعارات الحالية كشعارات رسمية للجميع</button>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('newGiftTemplateForm').classList.toggle('hidden')">+ إضافة قالب شهادة جديد</button>
+                </div>
             </div>
 
             <div id="newGiftTemplateForm" class="hidden" style="margin-top:10px; padding-top:10px; border-top:1px solid #e2e8f0;">
@@ -672,26 +675,27 @@
                     </div>
                 </div>
                 <div style="margin-bottom:8px;">
-                    <label style="font-size:11.5px; font-weight:bold; display:block; margin-bottom:3px;">صورة خلفية مخصصة للقالب (اختياري — يُترك فارغاً لاستخدام الزخرفة الإسلامية بالألوان المختارة):</label>
+                    <label style="font-size:11.5px; font-weight:bold; display:block; margin-bottom:3px;">صورة خلفية مخصصة للقالب (اختياري):</label>
                     <input type="file" id="gtNewBgFile" accept="image/*" class="input-field" style="padding:6px; font-size:12px;">
                 </div>
                 <button type="button" class="btn btn-success btn-sm" onclick="saveNewAdminGiftTemplate()">حفظ القالب الجديد وإتاحته لجميع المعلمين ✔</button>
-
                 <div id="adminCustomTemplatesList" style="margin-top:10px;"></div>
             </div>
         </div>
 
         <div class="grid-2" style="align-items:start;">
-            <!-- العمود الأيمن: بيانات الشهادة والخيارات -->
+            <!-- العمود الأيمن: جميع الخانات القابلة للتعديل + اختيار الطلاب دفعة واحدة + الشعارات -->
             <div style="background:#ffffff; padding:14px; border-radius:12px; border:1px solid #fde68a; display:flex; flex-direction:column; gap:10px;">
+
+                <!-- 1. القالب والمقاس -->
                 <div class="grid-2">
                     <div>
-                        <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px;">١. اختر القالب:</label>
-                        <select id="giftTemplateSelect" class="select-field" style="padding:8px; font-size:13px;" onchange="renderGiftCanvas()"></select>
+                        <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px;">١. القالب:</label>
+                        <select id="giftTemplateSelect" class="select-field" style="padding:7px; font-size:12.5px;" onchange="renderGiftCanvas()"></select>
                     </div>
                     <div>
-                        <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px;">٢. المقاس المطلوب:</label>
-                        <select id="giftSizeSelect" class="select-field" style="padding:8px; font-size:13px;" onchange="renderGiftCanvas()">
+                        <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px;">٢. المقاس:</label>
+                        <select id="giftSizeSelect" class="select-field" style="padding:7px; font-size:12.5px;" onchange="renderGiftCanvas()">
                             <option value="print">🖨️ شهادة طباعة أفقية (A4)</option>
                             <option value="fb">📘 منشور فيسبوك (مربع 1:1)</option>
                             <option value="status">📱 حالة واتساب / ستوري (9:16)</option>
@@ -699,62 +703,133 @@
                     </div>
                 </div>
 
-                <div>
-                    <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px;">٣. اختر الدارس من القائمة أو اكتب اسمه مباشرة:</label>
-                    <select id="giftStudentQuickPick" class="select-field" style="padding:7px; font-size:12.5px; margin-bottom:6px;" onchange="if(this.value){ document.getElementById('giftStudentNameInp').value=this.value; renderGiftCanvas(); }">
-                        <option value="">-- اختر دارساً من طلابك (أو اكتب الاسم بالأسفل) --</option>
-                    </select>
-                    <input type="text" id="giftStudentNameInp" class="input-field" placeholder="اكتب اسم الدارس المكرّم هنا..." oninput="renderGiftCanvas()">
-                </div>
-
-                <div class="grid-2">
-                    <div>
-                        <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px;">٤. عنوان الإهداء / الشهادة:</label>
-                        <select id="giftTitleSelect" class="select-field" style="padding:8px; font-size:13px;" onchange="renderGiftCanvas()">
-                            <option value="شهادة شكر وتقدير">شهادة شكر وتقدير</option>
-                            <option value="وسام التميز القرآني">وسام التميز القرآني</option>
-                            <option value="تهنئة قلبية بالتفوق">تهنئة قلبية بالتفوق</option>
-                            <option value="إهداء خاص لدارس متميز">إهداء خاص لدارس متميز</option>
-                            <option value="بشرى إتمام الحفظ">بشرى إتمام الحفظ</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px;">٥. اسم المُهدي / المعلم:</label>
-                        <input type="text" id="giftPresenterInp" class="input-field" style="padding:8px; font-size:13px;" oninput="renderGiftCanvas()">
+                <!-- 2. إضافة صور كـ لوجو (يمين ويسار الترويسة) -->
+                <div style="background:#f8fafc; padding:9px; border-radius:8px; border:1px solid #cbd5e1;">
+                    <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:6px; color:#1f4e78;">٣. الشعارات (لوجو يمين ولوجو يسار الترويسة):</label>
+                    <div class="grid-2">
+                        <div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+                                <span style="font-size:11px; font-weight:bold;">لوجو اليمين:</span>
+                                <button type="button" class="btn btn-light btn-sm" style="padding:2px 6px; font-size:10px;" onclick="clearGiftLogo('right')">مسح</button>
+                            </div>
+                            <input type="file" id="giftLogoRightFile" accept="image/*" class="input-field" style="padding:4px; font-size:11px;" onchange="handleGiftLogoUpload('right', this)">
+                        </div>
+                        <div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+                                <span style="font-size:11px; font-weight:bold;">لوجو اليسار:</span>
+                                <button type="button" class="btn btn-light btn-sm" style="padding:2px 6px; font-size:10px;" onclick="clearGiftLogo('left')">مسح</button>
+                            </div>
+                            <input type="file" id="giftLogoLeftFile" accept="image/*" class="input-field" style="padding:4px; font-size:11px;" onchange="handleGiftLogoUpload('left', this)">
+                        </div>
                     </div>
                 </div>
 
-                <div>
-                    <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px;">٦. سبب التكريم / نص الإهداء:</label>
-                    <div style="display:flex; gap:5px; flex-wrap:wrap; margin-bottom:6px;">
-                        <button type="button" class="btn btn-light btn-sm" style="font-size:11px; padding:4px 8px;" onclick="setGiftReason('لإتمام حفظ المقرر القرآني بتفوق وإتقان')">إتمام الحفظ بتفوق</button>
-                        <button type="button" class="btn btn-light btn-sm" style="font-size:11px; padding:4px 8px;" onclick="setGiftReason('لحسن التلاوة وإتقان أحكام التجويد')">إتقان أحكام التجويد</button>
-                        <button type="button" class="btn btn-light btn-sm" style="font-size:11px; padding:4px 8px;" onclick="setGiftReason('للحصول على الدرجة النهائية في الاختبار')">الدرجة النهائية</button>
-                        <button type="button" class="btn btn-light btn-sm" style="font-size:11px; padding:4px 8px;" onclick="setGiftReason('للمواظبة والالتزام والأدب الرفيع في الحلقات')">المواظبة والالتزام</button>
+                <!-- 3. اختيار طالب واحد أو مجموعة طلاب دفعة واحدة -->
+                <div style="background:#f0fdf4; padding:10px; border-radius:8px; border:1px solid #86efac;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
+                        <label style="font-size:12px; font-weight:bold; color:#155e3b;">٤. الدارسون المكرّمون (طالب واحد أو عدة طلاب دفعة واحدة):</label>
+                        <div style="display:flex; gap:4px;">
+                            <button type="button" class="btn btn-light btn-sm" style="padding:2px 7px; font-size:11px;" onclick="toggleAllGiftStudents(true)">تحديد الكل ✔</button>
+                            <button type="button" class="btn btn-light btn-sm" style="padding:2px 7px; font-size:11px;" onclick="toggleAllGiftStudents(false)">إلغاء الكل</button>
+                        </div>
                     </div>
-                    <textarea id="giftReasonInp" rows="2" class="textarea-field" style="font-size:13px;" placeholder="اكتب سبب التكريم هنا..." oninput="renderGiftCanvas()">لتميزه وتفوقه في حفظ وتلاوة كتاب الله الكريم</textarea>
+                    <input type="text" id="giftStudentSearchInp" class="input-field" style="padding:6px 8px; font-size:12px; margin-bottom:5px; background:#fff;" placeholder="ابحث باسم الدارس لتحديده..." oninput="filterGiftStudentsChecklist(this.value)">
+                    <div id="giftStudentsChecklist" style="max-height:115px; overflow-y:auto; background:#fff; border:1px solid #cbd5e1; border-radius:6px; padding:4px; margin-bottom:6px;"></div>
+                    <div id="giftSelectedCountBadge" style="font-size:11.5px; font-weight:bold; color:#155e3b; margin-bottom:5px;">المحدد من القائمة: 0 طالب</div>
+
+                    <label style="font-size:11.5px; font-weight:bold; display:block; margin-bottom:3px; color:#334155;">أو اكتب اسم الدارس / أسماء إضافية (كل اسم في سطر مستقل):</label>
+                    <textarea id="giftManualNamesInp" rows="2" class="textarea-field" style="font-size:12.5px; background:#fff;" placeholder="اكتب اسم الدارس هنا (أو عدة أسماء كل اسم في سطر)..." oninput="onGiftRecipientsChanged()"></textarea>
+                </div>
+
+                <!-- 4. جميع خانات النصوص قابلة للتعديل الكامل بواسطة المعلم -->
+                <div style="background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #cbd5e1; display:flex; flex-direction:column; gap:7px;">
+                    <b style="font-size:12px; color:#1f4e78;">٥. تعديل كافة نصوص الشهادة (كل خانة قابلة للتعديل):</b>
+
+                    <div class="grid-2">
+                        <div>
+                            <label style="font-size:11px; font-weight:bold; display:block; margin-bottom:2px;">السطر العلوي الأول (الجهة):</label>
+                            <input type="text" id="giftTopLine1Inp" class="input-field" style="padding:6px; font-size:12px;" value="جمعية رعاية حفظة القرآن الكريم بالمنيا" oninput="renderGiftCanvas()">
+                        </div>
+                        <div>
+                            <label style="font-size:11px; font-weight:bold; display:block; margin-bottom:2px;">السطر العلوي الثاني (المدرسة):</label>
+                            <input type="text" id="giftTopLine2Inp" class="input-field" style="padding:6px; font-size:12px;" value="مدرسة الحمد للقرآن الكريم بالجزائر" oninput="renderGiftCanvas()">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label style="font-size:11px; font-weight:bold; display:block; margin-bottom:2px;">عنوان الشهادة / الإهداء:</label>
+                        <div style="display:flex; gap:6px;">
+                            <input type="text" id="giftTitleInp" class="input-field" style="padding:6px; font-size:12.5px; font-weight:bold;" value="شهادة شكر وتقدير" oninput="renderGiftCanvas()">
+                            <select class="select-field" style="width:145px; padding:6px; font-size:11.5px;" onchange="if(this.value){ document.getElementById('giftTitleInp').value=this.value; renderGiftCanvas(); }">
+                                <option value="">قوالب عناوين...</option>
+                                <option value="شهادة شكر وتقدير">شهادة شكر وتقدير</option>
+                                <option value="وسام التميز القرآني">وسام التميز القرآني</option>
+                                <option value="تهنئة قلبية بالتفوق">تهنئة قلبية بالتفوق</option>
+                                <option value="إهداء خاص لدارس متميز">إهداء خاص لدارس متميز</option>
+                                <option value="بشرى إتمام الحفظ">بشرى إتمام الحفظ</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label style="font-size:11px; font-weight:bold; display:block; margin-bottom:2px;">عبارة التقديم (قبل اسم الدارس):</label>
+                        <input type="text" id="giftIntroInp" class="input-field" style="padding:6px; font-size:12px;" value="تُهدي إدارة المدرسة ومعلمو الحلقات هذه الشهادة إلى الدارس/ة:" oninput="renderGiftCanvas()">
+                    </div>
+
+                    <div>
+                        <label style="font-size:11px; font-weight:bold; display:block; margin-bottom:2px;">سبب التكريم / نص الإهداء:</label>
+                        <div style="display:flex; gap:4px; flex-wrap:wrap; margin-bottom:4px;">
+                            <button type="button" class="btn btn-light btn-sm" style="font-size:10.5px; padding:3px 7px;" onclick="setGiftReason('لإتمام حفظ المقرر القرآني بتفوق وإتقان')">إتمام الحفظ</button>
+                            <button type="button" class="btn btn-light btn-sm" style="font-size:10.5px; padding:3px 7px;" onclick="setGiftReason('لحسن التلاوة وإتقان أحكام التجويد')">إتقان التجويد</button>
+                            <button type="button" class="btn btn-light btn-sm" style="font-size:10.5px; padding:3px 7px;" onclick="setGiftReason('للحصول على الدرجة النهائية في الاختبار')">الدرجة النهائية</button>
+                            <button type="button" class="btn btn-light btn-sm" style="font-size:10.5px; padding:3px 7px;" onclick="setGiftReason('للمواظبة والالتزام والأدب الرفيع في الحلقات')">المواظبة والالتزام</button>
+                        </div>
+                        <textarea id="giftReasonInp" rows="2" class="textarea-field" style="font-size:12.5px; padding:6px;" oninput="renderGiftCanvas()">لتميزه وتفوقه في حفظ وتلاوة كتاب الله الكريم</textarea>
+                    </div>
+
+                    <div>
+                        <label style="font-size:11px; font-weight:bold; display:block; margin-bottom:2px;">الدعاء الختامي (أسفل سبب التكريم):</label>
+                        <input type="text" id="giftDuaaInp" class="input-field" style="padding:6px; font-size:12px;" value="سائلين المولى عز وجل أن يبارك في حفظه وأن يجعله من أهل القرآن وخاصته" oninput="renderGiftCanvas()">
+                    </div>
+
+                    <div class="grid-2">
+                        <div>
+                            <label style="font-size:11px; font-weight:bold; display:block; margin-bottom:2px;">التوقيع / مُقدّم الإهداء (يمين):</label>
+                            <input type="text" id="giftPresenterInp" class="input-field" style="padding:6px; font-size:12px;" oninput="renderGiftCanvas()">
+                        </div>
+                        <div>
+                            <label style="font-size:11px; font-weight:bold; display:block; margin-bottom:2px;">التاريخ (يسار):</label>
+                            <input type="text" id="giftDateInp" class="input-field" style="padding:6px; font-size:12px;" oninput="renderGiftCanvas()">
+                        </div>
+                    </div>
                 </div>
 
                 <!-- أزرار الحفظ والطباعة والمشاركة -->
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:4px;">
-                    <button type="button" class="btn btn-danger" onclick="downloadGiftPDF()">📄 حفظ كملف PDF</button>
-                    <button type="button" class="btn btn-primary" onclick="printGiftCertificate()">🖨️ طباعة مباشرة</button>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:2px;">
+                    <button type="button" class="btn btn-danger" onclick="downloadGiftPDF()">📄 حفظ PDF (للجميع دفعة واحدة)</button>
+                    <button type="button" class="btn btn-primary" onclick="printGiftCertificate()">🖨️ طباعة (للجميع دفعة واحدة)</button>
                     <button type="button" class="btn btn-wa" onclick="shareGiftImage('whatsapp')">💬 واتساب (رسائل / حالات)</button>
                     <button type="button" class="btn" style="background:#1877f2; color:#fff;" onclick="shareGiftImage('facebook')">📘 مشاركة فيسبوك</button>
                 </div>
-                <button type="button" class="btn btn-light btn-sm" style="width:100%;" onclick="downloadGiftPNG()">🖼️ تنزيل كصورة عالية الدقة (PNG)</button>
+                <button type="button" class="btn btn-light btn-sm" style="width:100%;" onclick="downloadGiftPNG()">🖼️ تنزيل كصورة PNG (لكل طالب محدد)</button>
             </div>
 
-            <!-- العمود الأيسر: المعاينة الحية الفورية للشهادة -->
+            <!-- العمود الأيسر: المعاينة الحية والتنقل بين الطلاب المحددين -->
             <div style="background:#ffffff; padding:12px; border-radius:12px; border:1px solid #cbd5e1; text-align:center;">
-                <div style="font-size:12px; font-weight:bold; color:#1f4e78; margin-bottom:8px;">المعاينة الحية للشهادة / الإهداء:</div>
-                <div style="background:#e2e8f0; padding:10px; border-radius:10px; display:flex; align-items:center; justify-content:center; min-height:280px;">
-                    <canvas id="giftPreviewCanvas" style="max-width:100%; max-height:460px; border-radius:8px; box-shadow:0 6px 20px rgba(0,0,0,0.18); background:#fff;"></canvas>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
+                    <span style="font-size:12px; font-weight:bold; color:#1f4e78;">المعاينة الحية للشهادة:</span>
+                    <div id="giftBatchPreviewNav" class="hidden" style="display:flex; align-items:center; gap:6px;">
+                        <button type="button" class="btn btn-light btn-sm" style="padding:3px 8px;" onclick="stepGiftPreview(-1)">◀ السابق</button>
+                        <span id="giftBatchPreviewCounter" style="font-size:11.5px; font-weight:bold; color:#155e3b;">1 / 1</span>
+                        <button type="button" class="btn btn-light btn-sm" style="padding:3px 8px;" onclick="stepGiftPreview(1)">التالي ▶</button>
+                    </div>
+                </div>
+                <div style="background:#e2e8f0; padding:10px; border-radius:10px; display:flex; align-items:center; justify-content:center; min-height:300px;">
+                    <canvas id="giftPreviewCanvas" style="max-width:100%; max-height:480px; border-radius:8px; box-shadow:0 6px 20px rgba(0,0,0,0.18); background:#fff;"></canvas>
                 </div>
             </div>
         </div>
     </div>
-
 </div>
 
 <script>
@@ -2630,16 +2705,20 @@ function clearFirebaseConfig() {
     location.reload();
 }
 
-// ==================== استوديو الإهداء وشهادات التقدير ====================
+// ==================== استوديو الإهداء وشهادات التقدير (النسخة المتكاملة) ====================
 const BUILTIN_GIFT_TEMPLATES = [
-    { id: 'royal_gold', name: 'إطار ذهبي ملكي (زخرفة إسلامية)', primary: '#1f4e78', accent: '#d97706', bg: '#fffdf7', bgImage: null },
-    { id: 'emerald_quran', name: 'زمردي فاخر (نور القرآن)', primary: '#155e3b', accent: '#b45309', bg: '#f4fbf7', bgImage: null },
-    { id: 'sky_crown', name: 'أزرق سماوي هادئ (تاج الوقار)', primary: '#0f4c81', accent: '#0284c7', bg: '#f4f9ff', bgImage: null },
-    { id: 'rose_blossom', name: 'وردي مبهج (للزهرات والناشئة)', primary: '#9d174d', accent: '#db2777', bg: '#fff5f8', bgImage: null },
-    { id: 'classic_print', name: 'كلاسيكي أبيض (للطباعة الاقتصادية A4)', primary: '#1e293b', accent: '#92400e', bg: '#ffffff', bgImage: null }
+    { id: 'modern_navy_gold', name: 'وسام الشرائط والختم الذهبي (كحلي × ذهبي)', primary: '#13294b', accent: '#c9962b', bg: '#ffffff', style: 'modern_ribbon', bgImage: null },
+    { id: 'modern_emerald_gold', name: 'وسام الشرائط والختم الذهبي (زمردي × ذهبي)', primary: '#124734', accent: '#c9962b', bg: '#ffffff', style: 'modern_ribbon', bgImage: null },
+    { id: 'royal_gold', name: 'إطار ذهبي ملكي (زخرفة إسلامية)', primary: '#1f4e78', accent: '#d97706', bg: '#fffdf7', style: 'classic_islamic', bgImage: null },
+    { id: 'emerald_quran', name: 'زمردي فاخر (نور القرآن)', primary: '#155e3b', accent: '#b45309', bg: '#f4fbf7', style: 'classic_islamic', bgImage: null },
+    { id: 'rose_blossom', name: 'وردي مبهج (للزهرات والناشئة)', primary: '#9d174d', accent: '#db2777', bg: '#fff5f8', style: 'modern_ribbon', bgImage: null },
+    { id: 'classic_print', name: 'كلاسيكي أبيض (للطباعة الاقتصادية A4)', primary: '#1e293b', accent: '#92400e', bg: '#ffffff', style: 'classic_islamic', bgImage: null }
 ];
 
 let cachedBgImages = {};
+let activeGiftLogos = { right: null, left: null };
+let cachedLogoImages = { right: null, left: null };
+let currentPreviewBatchIndex = 0;
 
 function getAllGiftTemplates() {
     const custom = Array.isArray(APP_STATE.gift_templates) ? APP_STATE.gift_templates : [];
@@ -2650,12 +2729,121 @@ function isMainAdminUser() {
     return currentUser && currentUser.role === 'admin';
 }
 
+function getSelectedGiftRecipients() {
+    const checkedNames = Array.from(document.querySelectorAll('.gift-st-chk:checked')).map(c => c.value.trim()).filter(Boolean);
+    const manualRaw = document.getElementById('giftManualNamesInp') ? document.getElementById('giftManualNamesInp').value : '';
+    const manualNames = manualRaw.split(/
+?
+/).map(s => s.trim()).filter(Boolean);
+    const combined = [...checkedNames, ...manualNames];
+    return combined.length ? combined : ['اسم الدارس المكرّم'];
+}
+
+function onGiftRecipientsChanged() {
+    const checkedCount = document.querySelectorAll('.gift-st-chk:checked').length;
+    const badge = document.getElementById('giftSelectedCountBadge');
+    if (badge) badge.textContent = `المحدد من القائمة: ${checkedCount} طالب`;
+
+    const recipients = getSelectedGiftRecipients();
+    if (currentPreviewBatchIndex >= recipients.length) {
+        currentPreviewBatchIndex = Math.max(0, recipients.length - 1);
+    }
+    updateBatchNavUI();
+    renderGiftCanvas();
+}
+
+function updateBatchNavUI() {
+    const recipients = getSelectedGiftRecipients();
+    const nav = document.getElementById('giftBatchPreviewNav');
+    const counter = document.getElementById('giftBatchPreviewCounter');
+    if (!nav || !counter) return;
+    if (recipients.length > 1) {
+        nav.classList.remove('hidden');
+        counter.textContent = `طالب ${currentPreviewBatchIndex + 1} من ${recipients.length}`;
+    } else {
+        nav.classList.add('hidden');
+    }
+}
+
+function stepGiftPreview(delta) {
+    const recipients = getSelectedGiftRecipients();
+    if (!recipients.length) return;
+    currentPreviewBatchIndex = (currentPreviewBatchIndex + delta + recipients.length) % recipients.length;
+    updateBatchNavUI();
+    renderGiftCanvas();
+}
+
+function toggleAllGiftStudents(state) {
+    document.querySelectorAll('.gift-st-chk').forEach(chk => {
+        if (chk.closest('label').style.display !== 'none') {
+            chk.checked = state;
+        }
+    });
+    onGiftRecipientsChanged();
+}
+
+function filterGiftStudentsChecklist(query) {
+    const q = query.trim();
+    document.querySelectorAll('.gift-st-item').forEach(lbl => {
+        const name = lbl.dataset.name || '';
+        lbl.style.display = (!q || name.includes(q)) ? 'flex' : 'none';
+    });
+}
+
+function handleGiftLogoUpload(side, inputEl) {
+    if (!inputEl.files || !inputEl.files[0]) return;
+    compressImageToDataUrl(inputEl.files[0], 450, 0.88).then(dataUrl => {
+        activeGiftLogos[side] = dataUrl;
+        const img = new Image();
+        img.onload = () => {
+            cachedLogoImages[side] = img;
+            renderGiftCanvas();
+        };
+        img.src = dataUrl;
+    });
+}
+
+function clearGiftLogo(side) {
+    activeGiftLogos[side] = null;
+    cachedLogoImages[side] = null;
+    const inp = document.getElementById(side === 'right' ? 'giftLogoRightFile' : 'giftLogoLeftFile');
+    if (inp) inp.value = '';
+    renderGiftCanvas();
+}
+
+async function saveCurrentLogosAsSchoolDefault() {
+    if (!isMainAdminUser()) return;
+    APP_STATE.gift_logos = {
+        right: activeGiftLogos.right || null,
+        left: activeGiftLogos.left || null
+    };
+    await saveState();
+    alert('تم اعتماد الشعارات الحالية كشعارات رسمية تظهر تلقائياً لجميع المعلمين ✔');
+}
+
+function loadDefaultSchoolLogos() {
+    const savedLogos = APP_STATE.gift_logos || {};
+    ['right', 'left'].forEach(side => {
+        if (!activeGiftLogos[side] && savedLogos[side]) {
+            activeGiftLogos[side] = savedLogos[side];
+            const img = new Image();
+            img.onload = () => {
+                cachedLogoImages[side] = img;
+                renderGiftCanvas();
+            };
+            img.src = savedLogos[side];
+        }
+    });
+}
+
 async function openGiftStudioModal() {
     try {
         await loadState();
     } catch (e) {}
 
-    // إظهار لوحة إضافة القوالب للأدمن الرئيسي فقط
+    loadDefaultSchoolLogos();
+
+    // إظهار لوحة إضافة القوالب والشعارات الرسمية للأدمن الرئيسي فقط
     const adminMgr = document.getElementById('adminGiftTemplatesManager');
     if (adminMgr) {
         adminMgr.classList.toggle('hidden', !isMainAdminUser());
@@ -2667,26 +2855,45 @@ async function openGiftStudioModal() {
     const allTpls = getAllGiftTemplates();
     tplSel.innerHTML = allTpls.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
 
-    // تعبئة قائمة الطلاب السريعة حسب صلاحية المستخدم
-    const stPick = document.getElementById('giftStudentQuickPick');
+    // تعبئة قائمة اختيار الطلاب المتعدد حسب صلاحية المستخدم
+    const listBox = document.getElementById('giftStudentsChecklist');
     let availableStudents = APP_STATE.students || [];
     if (currentUser && currentUser.role === 'teacher' && !currentUser.is_admin && !currentUser.is_reviewer) {
         const myGrps = new Set(currentUser.groups || []);
         availableStudents = availableStudents.filter(s => myGrps.has(s.group));
     }
-    stPick.innerHTML = `<option value="">-- اختر دارساً من القائمة (${availableStudents.length}) أو اكتب اسمه --</option>` +
-        availableStudents.map(s => `<option value="${s.name}">${s.name} (${s.group})</option>`).join('');
+    listBox.innerHTML = availableStudents.length
+        ? availableStudents.map(s => `
+            <label class="gift-st-item" data-name="${s.name}" style="display:flex; align-items:center; justify-content:space-between; gap:6px; padding:4px 6px; border-bottom:1px solid #f1f5f9; font-size:12px; cursor:pointer;">
+                <span style="display:flex; align-items:center; gap:6px;">
+                    <input type="checkbox" class="gift-st-chk" value="${s.name}" onchange="onGiftRecipientsChanged()">
+                    <b>${s.name}</b>
+                </span>
+                <small style="color:#64748b;">${s.group}</small>
+            </label>`).join('')
+        : '<div style="padding:6px; color:#64748b; font-size:12px;">لا يوجد طلاب في القائمة — اكتب الاسم يدوياً بالأسفل</div>';
 
-    // تعبئة اسم المُهدي تلقائياً
+    // تعبئة التوقيع والتاريخ والمدرسة افتراضياً (مع إمكانية تعديلها بالكامل)
+    const top2Inp = document.getElementById('giftTopLine2Inp');
+    if (top2Inp && APP_STATE.settings && APP_STATE.settings.school_name) {
+        top2Inp.value = APP_STATE.settings.school_name;
+    }
     const presenterInp = document.getElementById('giftPresenterInp');
     if (presenterInp && !presenterInp.value.trim()) {
-        presenterInp.value = currentUser ? `الشيخ/ ${currentUser.name}` : 'إدارة المدرسة';
+        presenterInp.value = currentUser ? `مُقدّم الإهداء: الشيخ/ ${currentUser.name}` : 'مُقدّم الإهداء: إدارة المدرسة';
     }
+    const dateInp = document.getElementById('giftDateInp');
+    if (dateInp && !dateInp.value.trim()) {
+        const todayStr = new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+        dateInp.value = `التاريخ: ${todayStr}`;
+    }
+
+    currentPreviewBatchIndex = 0;
+    onGiftRecipientsChanged();
 
     const modal = document.getElementById('giftStudioModal');
     modal.classList.remove('hidden');
     modal.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    renderGiftCanvas();
 }
 
 function closeGiftStudioModal() {
@@ -2698,171 +2905,380 @@ function setGiftReason(txt) {
     renderGiftCanvas();
 }
 
-// رسم الشهادة بدقة عالية على Canvas بمقاسات الطباعة أو فيسبوك أو حالات واتساب
-function renderGiftCanvas() {
-    const canvas = document.getElementById('giftPreviewCanvas');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+// رسم تصميم الشرائط المنحنية والختم الذهبي الفاخر (مطابق للنموذج الاحترافي)
+function drawModernRibbonBackground(ctx, W, H, primary, accent) {
+    // 1. خلفية بيضاء نقية مع خطوط طبوغرافية/موجية خفيفة جداً
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.16)';
+    ctx.lineWidth = 2;
+    for (let i = -3; i < 14; i++) {
+        ctx.beginPath();
+        const baseY = (H / 10) * i;
+        ctx.moveTo(0, baseY);
+        ctx.bezierCurveTo(W * 0.3, baseY - H * 0.08, W * 0.65, baseY + H * 0.12, W, baseY - H * 0.03);
+        ctx.stroke();
+    }
+    ctx.restore();
+
+    // 2. إطار مزدوج أنيق (خارجي كحلي وداخلي ذهبي)
+    const m1 = Math.round(Math.min(W, H) * 0.024);
+    const m2 = Math.round(Math.min(W, H) * 0.036);
+    ctx.strokeStyle = primary;
+    ctx.lineWidth = Math.max(4, Math.round(W * 0.0035));
+    ctx.strokeRect(m1, m1, W - m1 * 2, H - m1 * 2);
+
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = Math.max(2.5, Math.round(W * 0.0022));
+    ctx.strokeRect(m2, m2, W - m2 * 2, H - m2 * 2);
+
+    // 3. شرائط الزاوية العلوية اليسرى (في النسخة العربية RTL لتترك اليمين للوجو الأول، أو العكس)
+    // نرسم الشرائط في الزاوية العلوية اليسرى + الزاويتين السفليتين بشكل متناغم لا يحجب النصوص ولا الشعارات
+    ctx.save();
+    // --- شريط علوي يسار مع تدرج ذهبي وكحلي ---
+    const goldGrad1 = ctx.createLinearGradient(0, 0, W * 0.35, H * 0.35);
+    goldGrad1.addColorStop(0, '#f3d078');
+    goldGrad1.addColorStop(0.5, accent);
+    goldGrad1.addColorStop(1, '#8c6218');
+
+    ctx.fillStyle = goldGrad1;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(W * 0.34, 0);
+    ctx.bezierCurveTo(W * 0.24, H * 0.09, W * 0.12, H * 0.24, 0, H * 0.36);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = primary;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(W * 0.30, 0);
+    ctx.bezierCurveTo(W * 0.20, H * 0.08, W * 0.10, H * 0.21, 0, H * 0.32);
+    ctx.closePath();
+    ctx.fill();
+
+    // --- شريط سفلي يمين ---
+    const goldGrad2 = ctx.createLinearGradient(W * 0.65, H * 0.65, W, H);
+    goldGrad2.addColorStop(0, '#f3d078');
+    goldGrad2.addColorStop(0.5, accent);
+    goldGrad2.addColorStop(1, '#8c6218');
+
+    ctx.fillStyle = goldGrad2;
+    ctx.beginPath();
+    ctx.moveTo(W, H);
+    ctx.lineTo(W * 0.64, H);
+    ctx.bezierCurveTo(W * 0.76, H * 0.90, W * 0.88, H * 0.74, W, H * 0.58);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = primary;
+    ctx.beginPath();
+    ctx.moveTo(W, H);
+    ctx.lineTo(W * 0.68, H);
+    ctx.bezierCurveTo(W * 0.79, H * 0.91, W * 0.90, H * 0.77, W, H * 0.63);
+    ctx.closePath();
+    ctx.fill();
+
+    // --- شريط سفلي يسار ---
+    ctx.fillStyle = goldGrad1;
+    ctx.beginPath();
+    ctx.moveTo(0, H);
+    ctx.lineTo(W * 0.34, H);
+    ctx.bezierCurveTo(W * 0.22, H * 0.91, W * 0.11, H * 0.76, 0, H * 0.62);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = primary;
+    ctx.beginPath();
+    ctx.moveTo(0, H);
+    ctx.lineTo(W * 0.30, H);
+    ctx.bezierCurveTo(W * 0.19, H * 0.92, W * 0.09, H * 0.79, 0, H * 0.67);
+    ctx.closePath();
+    ctx.fill();
+
+    // 4. رسم الختم الذهبي البارز وشرائطه المتدلية في الزاوية العلوية اليسرى
+    const sealX = W * 0.125;
+    const sealY = H * 0.145;
+    const sealR = Math.round(Math.min(W, H) * 0.068);
+
+    // شرائط متدلية أسفل الختم
+    [-1, 1].forEach(dir => {
+        ctx.save();
+        ctx.translate(sealX + dir * sealR * 0.32, sealY + sealR * 0.65);
+        ctx.rotate(dir * -0.24);
+        const rw = sealR * 0.52;
+        const rh = sealR * 1.45;
+        ctx.fillStyle = primary;
+        ctx.beginPath();
+        ctx.moveTo(-rw / 2, 0);
+        ctx.lineTo(rw / 2, 0);
+        ctx.lineTo(rw / 2, rh);
+        ctx.lineTo(0, rh - rw * 0.38);
+        ctx.lineTo(-rw / 2, rh);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#f3d078';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.restore();
+    });
+
+    // دائرة الختم الذهبية متدرجة الإضاءة
+    const medalGrad = ctx.createRadialGradient(sealX - sealR * 0.3, sealY - sealR * 0.3, sealR * 0.1, sealX, sealY, sealR);
+    medalGrad.addColorStop(0, '#fff3c4');
+    medalGrad.addColorStop(0.45, '#e6b84c');
+    medalGrad.addColorStop(0.85, accent);
+    medalGrad.addColorStop(1, '#7c5310');
+
+    ctx.shadowColor = 'rgba(0,0,0,0.28)';
+    ctx.shadowBlur = 16;
+    ctx.shadowOffsetY = 6;
+    ctx.fillStyle = medalGrad;
+    ctx.beginPath();
+    ctx.arc(sealX, sealY, sealR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+
+    // حلقة داخلية للختم
+    ctx.strokeStyle = '#fff8dc';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(sealX, sealY, sealR * 0.80, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.restore();
+}
+
+// دالة رسم شهادة لطالب محدد على أي Canvas (للمعاينة أو التصدير الدفعي)
+function drawCertificateOnCanvas(targetCanvas, studentNameOverride) {
+    if (!targetCanvas) return;
+    const ctx = targetCanvas.getContext('2d');
 
     const sizeKey = document.getElementById('giftSizeSelect').value || 'print';
-    const tplId = document.getElementById('giftTemplateSelect').value || 'royal_gold';
+    const tplId = document.getElementById('giftTemplateSelect').value || 'modern_navy_gold';
     const tpl = getAllGiftTemplates().find(t => t.id === tplId) || BUILTIN_GIFT_TEMPLATES[0];
 
-    const studentName = document.getElementById('giftStudentNameInp').value.trim() || 'اسم الدارس المكرّم';
-    const titleText = document.getElementById('giftTitleSelect').value || 'شهادة شكر وتقدير';
-    const reasonText = document.getElementById('giftReasonInp').value.trim() || 'لتميزه وتفوقه في حفظ وتلاوة كتاب الله الكريم';
-    const presenterText = document.getElementById('giftPresenterInp').value.trim() || 'إدارة المدرسة';
-    const schoolName = (APP_STATE.settings && APP_STATE.settings.school_name) || 'مدرسة الحمد للقرآن الكريم بالجزائر';
+    const recipients = getSelectedGiftRecipients();
+    const studentName = studentNameOverride || recipients[currentPreviewBatchIndex] || 'اسم الدارس المكرّم';
 
-    // تحديد أبعاد التصميم بدقة عالية
+    const topLine1 = document.getElementById('giftTopLine1Inp').value.trim();
+    const topLine2 = document.getElementById('giftTopLine2Inp').value.trim();
+    const titleText = document.getElementById('giftTitleInp').value.trim();
+    const introText = document.getElementById('giftIntroInp').value.trim();
+    const reasonText = document.getElementById('giftReasonInp').value.trim();
+    const duaaText = document.getElementById('giftDuaaInp').value.trim();
+    const presenterText = document.getElementById('giftPresenterInp').value.trim();
+    const dateText = document.getElementById('giftDateInp').value.trim();
+
     let W = 1600, H = 1131; // A4 Landscape
     if (sizeKey === 'fb') { W = 1200; H = 1200; }
     else if (sizeKey === 'status') { W = 1080; H = 1920; }
 
-    canvas.width = W;
-    canvas.height = H;
+    targetCanvas.width = W;
+    targetCanvas.height = H;
 
-    const drawContent = (bgImg) => {
-        ctx.clearRect(0, 0, W, H);
+    ctx.clearRect(0, 0, W, H);
 
-        // 1. الخلفية
+    const bgImg = tpl.bgImage ? cachedBgImages[tpl.id] : null;
+    const isModernRibbon = (!bgImg && tpl.style === 'modern_ribbon');
+
+    // 1. الخلفية والإطار
+    if (bgImg) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, W, H);
+        const scale = Math.max(W / bgImg.width, H / bgImg.height);
+        const dw = bgImg.width * scale;
+        const dh = bgImg.height * scale;
+        ctx.drawImage(bgImg, (W - dw) / 2, (H - dh) / 2, dw, dh);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.80)';
+        ctx.fillRect(W * 0.07, H * 0.07, W * 0.86, H * 0.86);
+    } else if (isModernRibbon) {
+        drawModernRibbonBackground(ctx, W, H, tpl.primary, tpl.accent);
+    } else {
         ctx.fillStyle = tpl.bg || '#fffdf7';
         ctx.fillRect(0, 0, W, H);
 
-        if (bgImg) {
-            // رسم صورة الخلفية المخصصة التي رفعها الأدمن مع تغطية كاملة
-            const scale = Math.max(W / bgImg.width, H / bgImg.height);
-            const dw = bgImg.width * scale;
-            const dh = bgImg.height * scale;
-            ctx.drawImage(bgImg, (W - dw) / 2, (H - dh) / 2, dw, dh);
-            // طبقة شفافة خفيفة لضمان وضوح الخط
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.80)';
-            ctx.fillRect(W * 0.07, H * 0.07, W * 0.86, H * 0.86);
-        } else {
-            // زخرفة هندسية وإطار مزدوج فاخر
-            const m1 = Math.round(Math.min(W, H) * 0.035);
-            const m2 = Math.round(Math.min(W, H) * 0.052);
+        const m1 = Math.round(Math.min(W, H) * 0.035);
+        const m2 = Math.round(Math.min(W, H) * 0.052);
 
-            ctx.strokeStyle = tpl.primary;
-            ctx.lineWidth = Math.max(6, Math.round(W * 0.006));
-            ctx.strokeRect(m1, m1, W - m1 * 2, H - m1 * 2);
+        ctx.strokeStyle = tpl.primary;
+        ctx.lineWidth = Math.max(6, Math.round(W * 0.006));
+        ctx.strokeRect(m1, m1, W - m1 * 2, H - m1 * 2);
+
+        ctx.strokeStyle = tpl.accent;
+        ctx.lineWidth = Math.max(3, Math.round(W * 0.0028));
+        ctx.strokeRect(m2, m2, W - m2 * 2, H - m2 * 2);
+
+        const corners = [
+            [m2, m2], [W - m2, m2], [m2, H - m2], [W - m2, H - m2]
+        ];
+        const rCorner = Math.round(Math.min(W, H) * 0.026);
+        corners.forEach(([cx, cy]) => {
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.fillStyle = tpl.accent;
+            ctx.fillRect(-rCorner / 2, -rCorner / 2, rCorner, rCorner);
+            ctx.rotate(Math.PI / 4);
+            ctx.fillStyle = tpl.primary;
+            ctx.fillRect(-rCorner / 2, -rCorner / 2, rCorner, rCorner);
+            ctx.restore();
+        });
+    }
+
+    const isStatus = (sizeKey === 'status');
+    const scaleFactor = isStatus ? 1.02 : (sizeKey === 'fb' ? 0.92 : 1.0);
+
+    // 2. رسم الشعارات (لوجو يمين ولوجو يسار الترويسة)
+    const logoBoxSize = Math.round((isStatus ? 130 : 140) * scaleFactor);
+    const logoTopY = H * (isStatus ? 0.075 : 0.075);
+    const logoMarginX = W * (isStatus ? 0.10 : 0.08);
+
+    if (cachedLogoImages.right) {
+        drawContainedImage(ctx, cachedLogoImages.right, W - logoMarginX - logoBoxSize, logoTopY, logoBoxSize, logoBoxSize);
+    }
+    if (cachedLogoImages.left) {
+        drawContainedImage(ctx, cachedLogoImages.left, logoMarginX, logoTopY, logoBoxSize, logoBoxSize);
+    }
+
+    ctx.textAlign = 'center';
+    ctx.direction = 'rtl';
+
+    // 3. الترويسة العليا (سطران قابلان للتعديل)
+    if (topLine1) {
+        ctx.fillStyle = isModernRibbon ? '#475569' : '#475569';
+        ctx.font = `bold ${Math.round(27 * scaleFactor)}px Tahoma, Arial`;
+        ctx.fillText(topLine1, W / 2, H * (isStatus ? 0.12 : 0.125));
+    }
+    if (topLine2) {
+        ctx.fillStyle = tpl.primary;
+        ctx.font = `bold ${Math.round(34 * scaleFactor)}px Tahoma, Arial`;
+        ctx.fillText(topLine2, W / 2, H * (isStatus ? 0.165 : 0.175));
+    }
+
+    // 4. عنوان الشهادة (في التصميم العصري يظهر بخط كبير أنيق مع عنوان فرعي ذهبي، وفي الإسلامي بشارة)
+    if (titleText) {
+        if (isModernRibbon) {
+            ctx.fillStyle = tpl.primary;
+            ctx.font = `bold ${Math.round(58 * scaleFactor)}px Tahoma, Arial`;
+            ctx.fillText(titleText, W / 2, H * (isStatus ? 0.255 : 0.285));
+
+            // خط زخرفي ذهبي رفيع تحت العنوان
+            ctx.strokeStyle = tpl.accent;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(W * 0.36, H * (isStatus ? 0.275 : 0.31));
+            ctx.lineTo(W * 0.64, H * (isStatus ? 0.275 : 0.31));
+            ctx.stroke();
+        } else {
+            const badgeW = W * (isStatus ? 0.74 : 0.54);
+            const badgeH = Math.round(76 * scaleFactor);
+            const badgeX = (W - badgeW) / 2;
+            const badgeY = H * (isStatus ? 0.23 : 0.255);
+
+            ctx.fillStyle = tpl.primary;
+            roundRectCanvas(ctx, badgeX, badgeY, badgeW, badgeH, 18);
+            ctx.fill();
 
             ctx.strokeStyle = tpl.accent;
-            ctx.lineWidth = Math.max(3, Math.round(W * 0.0028));
-            ctx.strokeRect(m2, m2, W - m2 * 2, H - m2 * 2);
+            ctx.lineWidth = 3;
+            roundRectCanvas(ctx, badgeX, badgeY, badgeW, badgeH, 18);
+            ctx.stroke();
 
-            // زخارف الزوايا الإسلامية (نجوم ثمانية مبسطة)
-            const corners = [
-                [m2, m2], [W - m2, m2], [m2, H - m2], [W - m2, H - m2]
-            ];
-            const rCorner = Math.round(Math.min(W, H) * 0.026);
-            corners.forEach(([cx, cy]) => {
-                ctx.save();
-                ctx.translate(cx, cy);
-                ctx.fillStyle = tpl.accent;
-                ctx.fillRect(-rCorner / 2, -rCorner / 2, rCorner, rCorner);
-                ctx.rotate(Math.PI / 4);
-                ctx.fillStyle = tpl.primary;
-                ctx.fillRect(-rCorner / 2, -rCorner / 2, rCorner, rCorner);
-                ctx.restore();
-            });
+            ctx.fillStyle = '#ffffff';
+            ctx.font = `bold ${Math.round(40 * scaleFactor)}px Tahoma, Arial`;
+            ctx.fillText(titleText, W / 2, badgeY + badgeH * 0.68);
         }
+    }
 
-        ctx.textAlign = 'center';
-        ctx.direction = 'rtl';
-
-        const isStatus = (sizeKey === 'status');
-        const scaleFactor = isStatus ? 1.05 : (sizeKey === 'fb' ? 0.95 : 1.0);
-
-        // 2. الترويسة العليا (اسم الجمعية والمدرسة)
-        ctx.fillStyle = '#475569';
-        ctx.font = `bold ${Math.round(28 * scaleFactor)}px Tahoma, Arial`;
-        ctx.fillText('جمعية رعاية حفظة القرآن الكريم بالمنيا', W / 2, H * (isStatus ? 0.12 : 0.14));
-
-        ctx.fillStyle = tpl.primary;
-        ctx.font = `bold ${Math.round(34 * scaleFactor)}px Tahoma, Arial`;
-        ctx.fillText(schoolName, W / 2, H * (isStatus ? 0.165 : 0.195));
-
-        // خط فاصل ذهبي تحت الترويسة
-        ctx.strokeStyle = tpl.accent;
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.moveTo(W * 0.28, H * (isStatus ? 0.19 : 0.225));
-        ctx.lineTo(W * 0.72, H * (isStatus ? 0.19 : 0.225));
-        ctx.stroke();
-
-        // 3. شارة عنوان الشهادة
-        const badgeW = W * (isStatus ? 0.72 : 0.52);
-        const badgeH = Math.round(76 * scaleFactor);
-        const badgeX = (W - badgeW) / 2;
-        const badgeY = H * (isStatus ? 0.23 : 0.265);
-
-        ctx.fillStyle = tpl.primary;
-        roundRectCanvas(ctx, badgeX, badgeY, badgeW, badgeH, 18);
-        ctx.fill();
-
-        ctx.strokeStyle = tpl.accent;
-        ctx.lineWidth = 3;
-        roundRectCanvas(ctx, badgeX, badgeY, badgeW, badgeH, 18);
-        ctx.stroke();
-
-        ctx.fillStyle = '#ffffff';
-        ctx.font = `bold ${Math.round(42 * scaleFactor)}px Tahoma, Arial`;
-        ctx.fillText(titleText, W / 2, badgeY + badgeH * 0.68);
-
-        // 4. عبارة التقديم
+    // 5. عبارة التقديم (قابلة للتعديل)
+    if (introText) {
         ctx.fillStyle = '#334155';
-        ctx.font = `bold ${Math.round(32 * scaleFactor)}px Tahoma, Arial`;
-        ctx.fillText('تُهدي إدارة المدرسة ومعلمو الحلقات هذه الشهادة إلى الدارس/ة:', W / 2, H * (isStatus ? 0.36 : 0.42));
+        ctx.font = `bold ${Math.round(31 * scaleFactor)}px Tahoma, Arial`;
+        ctx.fillText(introText, W / 2, H * (isStatus ? 0.36 : 0.40));
+    }
 
-        // 5. اسم الدارس المكرّم بخط بارز ولون مميز
-        ctx.fillStyle = tpl.accent;
-        const nameFontSize = studentName.length > 26 ? Math.round(48 * scaleFactor) : Math.round(60 * scaleFactor);
-        ctx.font = `bold ${nameFontSize}px Tahoma, Arial`;
-        ctx.fillText(studentName, W / 2, H * (isStatus ? 0.45 : 0.53));
+    // 6. اسم الدارس المكرّم + خط ذهبي أنيق تحته (مطابق للنموذج)
+    ctx.fillStyle = isModernRibbon ? tpl.primary : tpl.accent;
+    const nameFontSize = studentName.length > 26 ? Math.round(50 * scaleFactor) : Math.round(64 * scaleFactor);
+    ctx.font = `bold ${nameFontSize}px Tahoma, Arial`;
+    ctx.fillText(studentName, W / 2, H * (isStatus ? 0.45 : 0.505));
 
-        // خط زخرفي أسفل اسم الطالب
-        ctx.strokeStyle = tpl.primary;
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        ctx.moveTo(W * 0.24, H * (isStatus ? 0.48 : 0.565));
-        ctx.lineTo(W * 0.76, H * (isStatus ? 0.48 : 0.565));
-        ctx.stroke();
+    ctx.strokeStyle = isModernRibbon ? tpl.accent : tpl.primary;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(W * 0.24, H * (isStatus ? 0.48 : 0.54));
+    ctx.lineTo(W * 0.76, H * (isStatus ? 0.48 : 0.54));
+    ctx.stroke();
 
-        // 6. سبب التكريم (مع التفاف تلقائي للأسطر الطويلة)
+    // 7. سبب التكريم (قابل للتعديل)
+    if (reasonText) {
         ctx.fillStyle = '#1e293b';
-        ctx.font = `bold ${Math.round(34 * scaleFactor)}px Tahoma, Arial`;
-        drawWrappedRtlText(ctx, reasonText, W / 2, H * (isStatus ? 0.55 : 0.64), W * 0.78, Math.round(50 * scaleFactor));
+        ctx.font = `bold ${Math.round(33 * scaleFactor)}px Tahoma, Arial`;
+        drawWrappedRtlText(ctx, reasonText, W / 2, H * (isStatus ? 0.55 : 0.615), W * 0.74, Math.round(48 * scaleFactor));
+    }
 
-        // 7. دعاء ختامي
-        ctx.fillStyle = tpl.primary;
+    // 8. الدعاء الختامي (قابل للتعديل)
+    if (duaaText) {
+        ctx.fillStyle = isModernRibbon ? tpl.accent : tpl.primary;
         ctx.font = `bold ${Math.round(28 * scaleFactor)}px Tahoma, Arial`;
-        ctx.fillText('سائلين المولى عز وجل أن يبارك في حفظه وأن يجعله من أهل القرآن وخاصته', W / 2, H * (isStatus ? 0.71 : 0.77));
+        ctx.fillText(duaaText, W / 2, H * (isStatus ? 0.70 : 0.745));
+    }
 
-        // 8. التذييل والتوقيع والتاريخ
-        const todayStr = new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
-        const footerY = H * (isStatus ? 0.84 : 0.88);
+    // 9. التوقيع والتاريخ في الأسفل مع خطي توقيع أنيقين (مطابق للنموذج)
+    const footerY = H * (isStatus ? 0.84 : 0.875);
+    const sigLineY = footerY - Math.round(38 * scaleFactor);
 
-        ctx.fillStyle = '#334155';
-        ctx.font = `bold ${Math.round(26 * scaleFactor)}px Tahoma, Arial`;
-        ctx.fillText(`مُقدّم الإهداء: ${presenterText}`, W * 0.72, footerY);
-        ctx.fillText(`التاريخ: ${todayStr}`, W * 0.28, footerY);
-    };
-
-    if (tpl.bgImage) {
-        if (cachedBgImages[tpl.id]) {
-            drawContent(cachedBgImages[tpl.id]);
-        } else {
-            const img = new Image();
-            img.onload = () => {
-                cachedBgImages[tpl.id] = img;
-                drawContent(img);
-            };
-            img.onerror = () => drawContent(null);
-            img.src = tpl.bgImage;
+    if (isModernRibbon) {
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 2;
+        if (presenterText) {
+            ctx.beginPath();
+            ctx.moveTo(W * 0.58, sigLineY);
+            ctx.lineTo(W * 0.82, sigLineY);
+            ctx.stroke();
         }
+        if (dateText) {
+            ctx.beginPath();
+            ctx.moveTo(W * 0.18, sigLineY);
+            ctx.lineTo(W * 0.42, sigLineY);
+            ctx.stroke();
+        }
+    }
+
+    ctx.fillStyle = '#1e293b';
+    ctx.font = `bold ${Math.round(25 * scaleFactor)}px Tahoma, Arial`;
+    if (presenterText) ctx.fillText(presenterText, W * 0.70, footerY);
+    if (dateText) ctx.fillText(dateText, W * 0.30, footerY);
+}
+
+function drawContainedImage(ctx, img, boxX, boxY, boxW, boxH) {
+    const ratio = Math.min(boxW / img.width, boxH / img.height);
+    const dw = img.width * ratio;
+    const dh = img.height * ratio;
+    const dx = boxX + (boxW - dw) / 2;
+    const dy = boxY + (boxH - dh) / 2;
+    ctx.drawImage(img, dx, dy, dw, dh);
+}
+
+function renderGiftCanvas() {
+    const canvas = document.getElementById('giftPreviewCanvas');
+    if (!canvas) return;
+    const tplId = document.getElementById('giftTemplateSelect').value || 'royal_gold';
+    const tpl = getAllGiftTemplates().find(t => t.id === tplId) || BUILTIN_GIFT_TEMPLATES[0];
+
+    if (tpl.bgImage && !cachedBgImages[tpl.id]) {
+        const img = new Image();
+        img.onload = () => {
+            cachedBgImages[tpl.id] = img;
+            drawCertificateOnCanvas(canvas);
+        };
+        img.onerror = () => drawCertificateOnCanvas(canvas);
+        img.src = tpl.bgImage;
     } else {
-        drawContent(null);
+        drawCertificateOnCanvas(canvas);
     }
 }
 
@@ -2895,42 +3311,66 @@ function drawWrappedRtlText(ctx, text, centerX, startY, maxWidth, lineHeight) {
     });
 }
 
-function getGiftFileBaseName() {
-    const st = (document.getElementById('giftStudentNameInp').value.trim() || 'شهادة_تقدير').replace(/\s+/g, '_');
-    return `شهادة_${st}`;
-}
-
 function downloadGiftPNG() {
-    const canvas = document.getElementById('giftPreviewCanvas');
-    const link = document.createElement('a');
-    link.download = `${getGiftFileBaseName()}.png`;
-    link.href = canvas.toDataURL('image/png', 1.0);
-    link.click();
+    const recipients = getSelectedGiftRecipients();
+    const offCanvas = document.createElement('canvas');
+    recipients.forEach((stName, idx) => {
+        setTimeout(() => {
+            drawCertificateOnCanvas(offCanvas, stName);
+            const link = document.createElement('a');
+            const safeName = stName.replace(/\s+/g, '_');
+            link.download = `شهادة_${safeName}.png`;
+            link.href = offCanvas.toDataURL('image/png', 1.0);
+            link.click();
+        }, idx * 350);
+    });
 }
 
+// تصدير شهادة أو عشرات الشهادات دفعة واحدة في ملف PDF واحد (صفحة لكل طالب)
 function downloadGiftPDF() {
-    const canvas = document.getElementById('giftPreviewCanvas');
-    const imgData = canvas.toDataURL('image/jpeg', 0.96);
+    const recipients = getSelectedGiftRecipients();
     const sizeKey = document.getElementById('giftSizeSelect').value || 'print';
+    const offCanvas = document.createElement('canvas');
 
     if (window.jspdf && window.jspdf.jsPDF) {
         const { jsPDF } = window.jspdf;
-        const orientation = (sizeKey === 'status') ? 'portrait' : (sizeKey === 'fb' ? 'portrait' : 'landscape');
+        const orientation = (sizeKey === 'status' || sizeKey === 'fb') ? 'portrait' : 'landscape';
+
+        drawCertificateOnCanvas(offCanvas, recipients[0]);
         const pdf = new jsPDF({
             orientation: orientation,
             unit: 'px',
-            format: [canvas.width, canvas.height]
+            format: [offCanvas.width, offCanvas.height]
         });
-        pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
-        pdf.save(`${getGiftFileBaseName()}.pdf`);
+
+        recipients.forEach((stName, idx) => {
+            if (idx > 0) {
+                pdf.addPage([offCanvas.width, offCanvas.height], orientation);
+            }
+            drawCertificateOnCanvas(offCanvas, stName);
+            const imgData = offCanvas.toDataURL('image/jpeg', 0.95);
+            pdf.addImage(imgData, 'JPEG', 0, 0, offCanvas.width, offCanvas.height);
+        });
+
+        const fileName = recipients.length === 1
+            ? `شهادة_${recipients[0].replace(/\s+/g, '_')}.pdf`
+            : `شهادات_تقدير_عدد_${recipients.length}.pdf`;
+        pdf.save(fileName);
     } else {
         printGiftCertificate();
     }
 }
 
+// طباعة شهادة واحدة أو كل الشهادات المحددة دفعة واحدة
 function printGiftCertificate() {
-    const canvas = document.getElementById('giftPreviewCanvas');
-    const dataUrl = canvas.toDataURL('image/png', 1.0);
+    const recipients = getSelectedGiftRecipients();
+    const offCanvas = document.createElement('canvas');
+    const imagesHtml = recipients.map(stName => {
+        drawCertificateOnCanvas(offCanvas, stName);
+        const dataUrl = offCanvas.toDataURL('image/png', 1.0);
+        return `<div class="page"><img src="${dataUrl}"></div>`;
+    }).join('');
+
     const win = window.open('', '_blank');
     if (!win) {
         alert('يرجى السماح بفتح النوافذ المنبثقة للطباعة!');
@@ -2939,15 +3379,18 @@ function printGiftCertificate() {
     win.document.write(`
         <!DOCTYPE html>
         <html lang="ar" dir="rtl">
-        <head><title>طباعة شهادة التقدير</title>
+        <head><title>طباعة شهادات التقدير (${recipients.length})</title>
         <style>
             @page { margin: 0; }
-            body { margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; background: #fff; }
+            body { margin: 0; background: #fff; }
+            .page { display: flex; align-items: center; justify-content: center; height: 100vh; page-break-after: always; }
+            .page:last-child { page-break-after: auto; }
             img { max-width: 100%; max-height: 100vh; object-fit: contain; }
         </style>
         </head>
         <body>
-            <img src="${dataUrl}" onload="window.print(); window.close();">
+            ${imagesHtml}
+            <script>window.onload = function() { window.print(); window.close(); };<\/script>
         </body>
         </html>
     `);
@@ -2955,22 +3398,25 @@ function printGiftCertificate() {
 }
 
 async function shareGiftImage(platform) {
+    const recipients = getSelectedGiftRecipients();
+    const currentName = recipients[currentPreviewBatchIndex] || recipients[0];
     const canvas = document.getElementById('giftPreviewCanvas');
-    const studentName = document.getElementById('giftStudentNameInp').value.trim() || 'الدارس المتميز';
+    drawCertificateOnCanvas(canvas, currentName);
+
     const reasonText = document.getElementById('giftReasonInp').value.trim();
-    const shareText = `🎖 تهنئة وتكريم من مدرسة الحمد للقرآن الكريم بالجزائر
-للدارس/ة: ${studentName}
+    const top2 = document.getElementById('giftTopLine2Inp').value.trim();
+    const shareText = `🎖 تهنئة وتكريم من ${top2}
+للدارس/ة: ${currentName}
 ${reasonText}`;
 
-    // استخدام Web Share API على الهواتف لمشاركة ملف الصورة مباشرة إلى واتساب (رسائل أو حالات) أو فيسبوك
     if (navigator.share && navigator.canShare) {
         try {
             const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-            const file = new File([blob], `${getGiftFileBaseName()}.png`, { type: 'image/png' });
+            const file = new File([blob], `شهادة_${currentName.replace(/\s+/g, '_')}.png`, { type: 'image/png' });
             if (navigator.canShare({ files: [file] })) {
                 await navigator.share({
                     files: [file],
-                    title: 'شهادة تقدير - مدرسة الحمد للقرآن الكريم',
+                    title: 'شهادة تقدير',
                     text: shareText
                 });
                 return;
@@ -2980,8 +3426,11 @@ ${reasonText}`;
         }
     }
 
-    // في حال الفتح من الكمبيوتر: تنزيل الصورة تلقائياً وفتح واتساب أو فيسبوك لإرفاقها
-    downloadGiftPNG();
+    const link = document.createElement('a');
+    link.download = `شهادة_${currentName.replace(/\s+/g, '_')}.png`;
+    link.href = canvas.toDataURL('image/png', 1.0);
+    link.click();
+
     if (platform === 'whatsapp') {
         alert('تم تنزيل صورة الشهادة على جهازك ✔\nسيتم فتح واتساب الآن لإرسالها في المحادثة أو رفعها كـ «حالة».');
         window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank');
