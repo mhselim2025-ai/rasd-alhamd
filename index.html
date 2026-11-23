@@ -223,9 +223,10 @@
     <div id="viewAdmin" class="hidden">
         <div class="tabs">
             <button class="tab-btn active" onclick="switchAdminTab('tabControl', this)">١. التحكم في الاختبارات والحالات</button>
-            <button class="tab-btn" onclick="switchAdminTab('tabUsers', this)">٢. الأكواد والمعلمون والمراجعون</button>
-            <button class="tab-btn" onclick="switchAdminTab('tabExcel', this)">٣. رفع وتصدير الإكسيل</button>
-            <button class="tab-btn" onclick="switchAdminTab('tabCloud', this)">٤. الربط السحابي (Firebase)</button>
+            <button class="tab-btn" onclick="switchAdminTab('tabReports', this)">٢. التقارير وسجل التعديلات 📊</button>
+            <button class="tab-btn" onclick="switchAdminTab('tabUsers', this)">٣. الأكواد والمعلمون والمراجعون</button>
+            <button class="tab-btn" onclick="switchAdminTab('tabExcel', this)">٤. رفع وتصدير الإكسيل</button>
+            <button class="tab-btn" onclick="switchAdminTab('tabCloud', this)">٥. الربط السحابي (Firebase)</button>
         </div>
 
         <!-- تبويب 1: التحكم في الاختبار وإضافة اختبارات جديدة -->
@@ -269,7 +270,91 @@
             </div>
         </div>
 
-        <!-- تبويب 2: المعلمون والمراجعون وتعديل الأكواد يدوياً -->
+        <!-- تبويب 2: التقارير الشاملة وسجل التعديلات ونقل الطلاب -->
+        <div id="tabReports" class="card hidden">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+                <h3 style="margin:0; color:#1f4e78;">التقارير الإحصائية وسجل التعديلات</h3>
+                <button class="btn btn-primary btn-sm" onclick="openTransferStudentModal()">🔄 نقل طالب بين المجموعات</button>
+            </div>
+            <div id="reportsExamTitle" style="font-weight:bold; color:#155e3b; margin-bottom:12px;"></div>
+
+            <!-- بطاقات الإحصائيات الثلاث مع قوائم منسدلة للمجموعات -->
+            <div class="grid-3" style="margin-bottom:16px;">
+                <!-- 1. تحت الرصد -->
+                <div style="background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:12px; padding:12px;">
+                    <div style="font-size:12.5px; color:#475569; font-weight:bold;">مجموعات تحت الرصد (عند المعلم)</div>
+                    <div id="statDraftCount" style="font-size:26px; font-weight:bold; color:#1e293b; margin:4px 0 8px 0;">0</div>
+                    <select id="statDraftSelect" class="select-field" style="font-size:12px; padding:6px;" onchange="if(this.value) openAdminEditGroup(this.value)">
+                        <option value="">-- قائمة المجموعات تحت الرصد --</option>
+                    </select>
+                </div>
+
+                <!-- 2. تم رصدها (بانتظار المراجعة) -->
+                <div style="background:#fffbeb; border:1.5px solid #fcd34d; border-radius:12px; padding:12px;">
+                    <div style="font-size:12.5px; color:#92400e; font-weight:bold;">تم رصدها (بانتظار المراجعة)</div>
+                    <div id="statSubmittedCount" style="font-size:26px; font-weight:bold; color:#b45309; margin:4px 0 8px 0;">0</div>
+                    <select id="statSubmittedSelect" class="select-field" style="font-size:12px; padding:6px;" onchange="if(this.value) openAdminEditGroup(this.value)">
+                        <option value="">-- قائمة المجموعات المرصودة --</option>
+                    </select>
+                </div>
+
+                <!-- 3. تم انتهاء الرصد والمراجعة (معتمدة نهائياً) -->
+                <div style="background:#f0fdf4; border:1.5px solid #86efac; border-radius:12px; padding:12px;">
+                    <div style="font-size:12.5px; color:#166534; font-weight:bold;">تم انتهاء الرصد والمراجعة ✔</div>
+                    <div id="statApprovedCount" style="font-size:26px; font-weight:bold; color:#155e3b; margin:4px 0 8px 0;">0</div>
+                    <select id="statApprovedSelect" class="select-field" style="font-size:12px; padding:6px;" onchange="if(this.value) openAdminEditGroup(this.value)">
+                        <option value="">-- قائمة المجموعات المعتمدة --</option>
+                    </select>
+                </div>
+            </div>
+
+            <hr style="border:0; border-top:1px solid #e2e8f0; margin:16px 0;">
+
+            <!-- سجل تعديلات المعلمين والدرجات -->
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+                <h4 style="margin:0; color:#1f4e78;">سجل تعديلات الدرجات التي قام بها المعلمون والإدارة:</h4>
+                <select id="auditTeacherFilter" class="select-field" style="width:220px; padding:6px; font-size:12px;" onchange="renderAuditLogs()">
+                    <option value="ALL">كل المعلمين والمستخدمين</option>
+                </select>
+            </div>
+            <div style="overflow-x:auto; max-height:300px; overflow-y:auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>التاريخ والوقت</th>
+                            <th>المعلم / المستخدم</th>
+                            <th>المجموعة</th>
+                            <th>الدارس</th>
+                            <th>الاختبار</th>
+                            <th>التعديل (من ← إلى)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="auditLogsTable"></tbody>
+                </table>
+            </div>
+
+            <hr style="border:0; border-top:1px solid #e2e8f0; margin:16px 0;">
+
+            <!-- سجل نقل الطلاب بين المجموعات -->
+            <h4 style="margin:0 0 8px 0; color:#1f4e78;">سجل نقل الطلاب بين المجموعات:</h4>
+            <div style="overflow-x:auto; max-height:240px; overflow-y:auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>التاريخ والوقت</th>
+                            <th>اسم الدارس (الكود)</th>
+                            <th>من مجموعة</th>
+                            <th>إلى مجموعة</th>
+                            <th>بواسطة</th>
+                            <th>السبب / ملاحظات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transferLogsTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- تبويب 3: المعلمون والمراجعون وتعديل الأكواد يدوياً -->
         <div id="tabUsers" class="card hidden">
             <h3 style="margin-top:0; color:#1f4e78;">إدارة الأكواد والمعلمين والمراجعين</h3>
             <div class="alert-box alert-info">
@@ -372,7 +457,7 @@
         <div class="card">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
                 <div>
-                    <h3 id="teacherWelcome" style="margin:0; color:#1f4e78;">مرحبا فضيلة الشيخ/ة/ ...</h3>
+                    <h3 id="teacherWelcome" style="margin:0; color:#1f4e78;">مرحباً الشيخ/ ...</h3>
                     <div id="teacherExamBanner" style="margin-top:6px; font-weight:bold; color:#155e3b;"></div>
                 </div>
                 <div style="min-width:220px;">
@@ -415,18 +500,24 @@
 
     <!-- 4. واجهة المراجع (Reviewer Dashboard) -->
     <div id="viewReviewer" class="hidden">
-        <div class="card">
-            <h3 id="reviewerWelcome" style="margin:0 0 6px 0; color:#1f4e78;">لوحة المراجعة والاعتماد</h3>
-            <div id="reviewerExamBanner" style="font-weight:bold; color:#155e3b;"></div>
+        <div class="card" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div>
+                <h3 id="reviewerWelcome" style="margin:0 0 6px 0; color:#1f4e78;">لوحة المراجعة والاعتماد</h3>
+                <div id="reviewerExamBanner" style="font-weight:bold; color:#155e3b;"></div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="openTransferStudentModal()">🔄 نقل طالب بين المجموعات</button>
         </div>
 
         <div id="reviewerListContainer"></div>
     </div>
 
-    <!-- نافذة التعديل الإداري المباشر للمدير (Modal) -->
+    <!-- نافذة التعديل والمراجعة الإدارية المباشرة للمدير (Modal) -->
     <div id="adminEditModal" class="card hidden" style="border:2px solid #1f4e78; background:#f8fafc;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <h3 id="adminModalTitle" style="margin:0; color:#1f4e78;">تعديل درجات المجموعة</h3>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+            <div>
+                <h3 id="adminModalTitle" style="margin:0; color:#1f4e78;">تعديل ومراجعة درجات المجموعة</h3>
+                <div id="adminModalStatusRow" style="margin-top:4px;"></div>
+            </div>
             <button class="btn btn-light btn-sm" onclick="closeAdminModal()">إغلاق</button>
         </div>
         <div style="overflow-x:auto;">
@@ -442,9 +533,56 @@
                 <tbody id="adminModalStudentsTable"></tbody>
             </table>
         </div>
-        <div style="margin-top:12px; display:flex; gap:8px;">
-            <button class="btn btn-success" onclick="saveAdminModalGrades()">حفظ التعديلات الإدارية</button>
-            <button class="btn btn-warning" onclick="adminResetGroupStatus('draft')">إعادة فتح المجموعة للمعلم</button>
+
+        <!-- صلاحية المدير كمراجع للبت النهائي أو الإعادة -->
+        <div style="margin-top:12px; background:#ffffff; padding:12px; border-radius:10px; border:1px solid #cbd5e1;">
+            <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:6px; color:#1f4e78;">ملاحظات الإدارة / المراجعة (تُكتب عند إعادة المجموعة للمعلم):</label>
+            <input type="text" id="adminModalNoteInp" class="input-field" style="margin-bottom:10px;" placeholder="اكتب ملاحظة للتعديل إذا أردت إرجاعها للمعلم...">
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn btn-primary" onclick="saveAdminModalGrades()">💾 حفظ التعديلات الإدارية</button>
+                <button class="btn btn-success" onclick="adminDecideGroup('approved')">✅ اعتماد نهائي وبت فيها (صلاحية المراجع)</button>
+                <button class="btn btn-danger" onclick="adminDecideGroup('returned')">↩ إرجاع للمعلم بملاحظة</button>
+                <button class="btn btn-warning" onclick="adminResetGroupStatus('draft')">🔓 إعادة فتح للمعلم (مسودة)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة نقل طالب من مجموعة إلى مجموعة أخرى (متاحة للمراجعين والأدمن فقط) -->
+    <div id="transferStudentModal" class="card hidden" style="border:2px solid #155e3b; background:#f0fdf4;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h3 style="margin:0; color:#155e3b;">🔄 نقل طالب من مجموعة إلى مجموعة أخرى</h3>
+            <button class="btn btn-light btn-sm" onclick="closeTransferStudentModal()">إغلاق</button>
+        </div>
+
+        <div class="grid-2" style="margin-bottom:10px;">
+            <div>
+                <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px;">١. ابحث عن الطالب بالاسم أو الكود:</label>
+                <input type="text" id="transferSearchInp" class="input-field" placeholder="اكتب اسم الطالب أو رقمه..." oninput="filterTransferStudentsList()">
+            </div>
+            <div>
+                <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px;">٢. اختر الطالب المراد نقله:</label>
+                <select id="transferStudentSelect" class="select-field" onchange="onTransferStudentSelected()"></select>
+            </div>
+        </div>
+
+        <div id="transferCurrentInfo" class="alert-box alert-info" style="margin-bottom:10px; padding:8px 12px; font-size:13px;"></div>
+
+        <div class="grid-2" style="margin-bottom:12px;">
+            <div>
+                <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px;">٣. اختر المجموعة الجديدة المنقول إليها:</label>
+                <select id="transferTargetGroupSelect" class="select-field"></select>
+            </div>
+            <div>
+                <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px;">٤. سبب النقل / ملاحظات (اختياري):</label>
+                <input type="text" id="transferReasonInp" class="input-field" placeholder="مثلاً: بناءً على رغبة ولي الأمر / تعديل مستوى">
+            </div>
+        </div>
+
+        <button class="btn btn-success" style="width:100%; padding:11px;" onclick="executeStudentTransfer()">تأكيد نقل الطالب وحفظ السجل ✔</button>
+
+        <div id="studentHistoryBox" style="margin-top:14px; background:#fff; padding:10px; border-radius:8px; border:1px solid #cbd5e1;">
+            <b style="font-size:12.5px; color:#1f4e78;">سجل التنقلات السابق لهذا الطالب:</b>
+            <div id="studentHistoryContent" style="font-size:12px; color:#475569; margin-top:4px;">اختر طالباً لعرض سجله.</div>
         </div>
     </div>
 
@@ -722,6 +860,7 @@ function openAdminView() {
     renderExamsDropdown();
     renderAdminGroups();
     renderAdminUsers();
+    renderAdminReports();
 }
 
 function renderExamsDropdown() {
@@ -751,12 +890,15 @@ async function addNewExam() {
 }
 
 function switchAdminTab(tabId, btnEl) {
-    ['tabControl', 'tabUsers', 'tabExcel', 'tabCloud'].forEach(id => {
+    ['tabControl', 'tabReports', 'tabUsers', 'tabExcel', 'tabCloud'].forEach(id => {
         document.getElementById(id).classList.add('hidden');
     });
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById(tabId).classList.remove('hidden');
     btnEl.classList.add('active');
+    if (tabId === 'tabReports') {
+        renderAdminReports();
+    }
 }
 
 async function saveActiveExamSetting() {
@@ -1264,8 +1406,29 @@ function sendCodeWhatsApp(userIdx) {
     }
     const pageUrl = window.location.href.split('?')[0];
     const roleText = u.role === 'teacher' ? 'رصد الدرجات' : 'مراجعة واعتماد الدرجات';
-    const msg = `السلام عليكم أ/ ${u.name}\nتم تفعيل حسابكم في منظومة ${roleText} بـ ${APP_STATE.settings.school_name}.\n\n🔗 رابط الدخول:\n${pageUrl}\n🔑 كود الدخول الخاص بكم: ${u.code}\n\nجزاكم الله خيراً.`;
+    const msg = `السلام عليكم الشيخ/ ${u.name}\nتم تفعيل حسابكم في منظومة ${roleText} بـ ${APP_STATE.settings.school_name}.\n\n🔗 رابط الدخول:\n${pageUrl}\n🔑 كود الدخول الخاص بكم: ${u.code}\n\nجزاكم الله خيراً.`;
     openWhatsApp(u.phone, msg);
+}
+
+function recordGradeAuditLog(student, examLabel, oldVal, newVal) {
+    const o = String(oldVal ?? '').trim();
+    const n = String(newVal ?? '').trim();
+    if (o === n) return;
+    if (!Array.isArray(APP_STATE.grade_logs)) APP_STATE.grade_logs = [];
+    APP_STATE.grade_logs.unshift({
+        timestamp: new Date().toLocaleString('ar-EG'),
+        user_name: currentUser ? currentUser.name : 'غير معروف',
+        user_role: currentUser ? currentUser.role : '',
+        group: student.group || '',
+        student_id: student.student_id || '',
+        student_name: student.name || '',
+        exam_label: examLabel,
+        old_val: o || '(فارغ)',
+        new_val: n || '(فارغ)'
+    });
+    if (APP_STATE.grade_logs.length > 500) {
+        APP_STATE.grade_logs = APP_STATE.grade_logs.slice(0, 500);
+    }
 }
 
 function openAdminEditGroup(groupName) {
@@ -1275,8 +1438,11 @@ function openAdminEditGroup(groupName) {
         return;
     }
     adminEditingGroup = groupName;
-    const meta = APP_STATE.groups_meta[groupName];
-    document.getElementById('adminModalTitle').textContent = `تعديل درجات مجموعة: ${groupName} (${getExamLabel(activeExam)})`;
+    const meta = APP_STATE.groups_meta[groupName] || { has_ahkam: false };
+    const sub = getSubmissionRecord(activeExam, groupName);
+    document.getElementById('adminModalTitle').textContent = `مراجعة وتعديل درجات مجموعة: ${groupName} (${getExamLabel(activeExam)})`;
+    document.getElementById('adminModalStatusRow').innerHTML = `المعلم: <b>${meta.teacher || '-'}</b> | الحالة الحالية: ${getStatusBadge(sub.status)}`;
+    document.getElementById('adminModalNoteInp').value = sub.note || '';
     document.getElementById('thAdminExamCol').textContent = `درجة ${getExamLabel(activeExam)}`;
     document.getElementById('thAdminAhkamCol').style.display = meta.has_ahkam ? '' : 'none';
 
@@ -1285,12 +1451,14 @@ function openAdminEditGroup(groupName) {
         <tr>
             <td>${s.student_id}</td>
             <td style="font-weight:bold;">${s.name}</td>
-            <td><input type="number" class="grade-input admin-exam-inp" data-sid="${s.student_id}" value="${s.scores[activeExam] ?? ''}"></td>
-            <td style="display:${meta.has_ahkam ? '' : 'none'}"><input type="number" class="grade-input admin-ahkam-inp" data-sid="${s.student_id}" value="${s.scores.ahkam ?? ''}"></td>
+            <td><input type="number" step="0.5" class="grade-input admin-exam-inp" data-sid="${s.student_id}" value="${s.scores[activeExam] ?? ''}"></td>
+            <td style="display:${meta.has_ahkam ? '' : 'none'}"><input type="number" step="0.5" class="grade-input admin-ahkam-inp" data-sid="${s.student_id}" value="${s.scores.ahkam ?? ''}"></td>
         </tr>
     `).join('');
 
-    document.getElementById('adminEditModal').classList.remove('hidden');
+    const modalEl = document.getElementById('adminEditModal');
+    modalEl.classList.remove('hidden');
+    modalEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function closeAdminModal() {
@@ -1298,20 +1466,68 @@ function closeAdminModal() {
     adminEditingGroup = null;
 }
 
-async function saveAdminModalGrades() {
+function applyAdminModalInputsToState() {
     const activeExam = APP_STATE.settings.active_exam;
+    const examLbl = getExamLabel(activeExam);
     document.querySelectorAll('.admin-exam-inp').forEach(inp => {
         const sid = inp.dataset.sid;
         const st = APP_STATE.students.find(s => String(s.student_id) === String(sid));
-        if (st) st.scores[activeExam] = inp.value.trim();
+        if (st) {
+            const newVal = inp.value.trim();
+            recordGradeAuditLog(st, examLbl, st.scores[activeExam], newVal);
+            st.scores[activeExam] = newVal;
+        }
     });
     document.querySelectorAll('.admin-ahkam-inp').forEach(inp => {
         const sid = inp.dataset.sid;
         const st = APP_STATE.students.find(s => String(s.student_id) === String(sid));
-        if (st) st.scores.ahkam = inp.value.trim();
+        if (st) {
+            const newVal = inp.value.trim();
+            recordGradeAuditLog(st, 'الأحكام', st.scores.ahkam, newVal);
+            st.scores.ahkam = newVal;
+        }
     });
+}
+
+async function saveAdminModalGrades() {
+    applyAdminModalInputsToState();
     await saveState();
-    alert('تم حفظ التعديلات الإدارية بنجاح!');
+    renderAdminReports();
+    alert('تم حفظ التعديلات الإدارية وتسجيلها في سجل التعديلات بنجاح ✔');
+    closeAdminModal();
+}
+
+// صلاحية الأدمن كمراجع للبت النهائي (اعتماد نهائي أو إرجاع بملاحظة)
+async function adminDecideGroup(decision) {
+    const activeExam = APP_STATE.settings.active_exam;
+    if (!adminEditingGroup || activeExam === 'none') return;
+
+    const note = document.getElementById('adminModalNoteInp').value.trim();
+    if (decision === 'returned' && !note) {
+        alert('يرجى كتابة سبب الإرجاع في خانة الملاحظات أولاً!');
+        return;
+    }
+
+    if (decision === 'approved') {
+        if (!confirm(`هل تؤكد البت النهائي واعتماد درجات مجموعة (${adminEditingGroup})؟
+هذا الاعتماد نهائي ويغلق التعديل على المعلمين.`)) {
+            return;
+        }
+    }
+
+    applyAdminModalInputsToState();
+    const sub = getSubmissionRecord(activeExam, adminEditingGroup);
+    sub.status = decision;
+    sub.note = decision === 'returned' ? note : '';
+    sub.updated_at = new Date().toLocaleString('ar-EG');
+    sub.decided_by = currentUser ? currentUser.name : 'الإدارة';
+
+    await saveState();
+    renderAdminGroups();
+    renderAdminReports();
+    alert(decision === 'approved'
+        ? `تم الاعتماد النهائي والبت في مجموعة (${adminEditingGroup}) بنجاح ✔`
+        : `تم إرجاع مجموعة (${adminEditingGroup}) للمعلم للتعديل ↩`);
     closeAdminModal();
 }
 
@@ -1322,8 +1538,246 @@ async function adminResetGroupStatus(newStatus) {
     sub.status = newStatus;
     await saveState();
     renderAdminGroups();
+    renderAdminReports();
     alert('تمت إعادة فتح المجموعة للمعلم بنجاح.');
     closeAdminModal();
+}
+
+// ==================== التقارير وسجل التعديلات ====================
+function renderAdminReports() {
+    const activeExam = APP_STATE.settings.active_exam;
+    const titleEl = document.getElementById('reportsExamTitle');
+    if (titleEl) {
+        titleEl.textContent = `إحصائيات الاختبار النشط حالياً: ${getExamLabel(activeExam)}`;
+    }
+
+    const allGroups = Object.keys(APP_STATE.groups_meta);
+    const draftGroups = [];
+    const submittedGroups = [];
+    const approvedGroups = [];
+
+    allGroups.forEach(gName => {
+        const sub = activeExam !== 'none' ? getSubmissionRecord(activeExam, gName) : { status: 'draft' };
+        const teacher = APP_STATE.groups_meta[gName]?.teacher || 'بدون معلم';
+        const label = `${gName} (${teacher})`;
+        if (sub.status === 'approved') {
+            approvedGroups.push({ value: gName, label });
+        } else if (sub.status === 'submitted') {
+            submittedGroups.push({ value: gName, label });
+        } else {
+            draftGroups.push({ value: gName, label });
+        }
+    });
+
+    const dCount = document.getElementById('statDraftCount');
+    const sCount = document.getElementById('statSubmittedCount');
+    const aCount = document.getElementById('statApprovedCount');
+    if (dCount) dCount.textContent = draftGroups.length;
+    if (sCount) sCount.textContent = submittedGroups.length;
+    if (aCount) aCount.textContent = approvedGroups.length;
+
+    const fillSel = (id, placeholder, list) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.innerHTML = `<option value="">${placeholder} (${list.length})</option>` +
+            list.map(item => `<option value="${item.value}">${item.label}</option>`).join('');
+    };
+
+    fillSel('statDraftSelect', '-- اختر مجموعة تحت الرصد للمعاينة --', draftGroups);
+    fillSel('statSubmittedSelect', '-- اختر مجموعة مرصودة للمراجعة --', submittedGroups);
+    fillSel('statApprovedSelect', '-- اختر مجموعة معتمدة نهائياً --', approvedGroups);
+
+    // تعبئة فلتر المعلمين في سجل التعديلات
+    const filterSel = document.getElementById('auditTeacherFilter');
+    if (filterSel) {
+        const prevVal = filterSel.value || 'ALL';
+        const logs = APP_STATE.grade_logs || [];
+        const uniqueUsers = Array.from(new Set(logs.map(l => l.user_name).filter(Boolean)));
+        filterSel.innerHTML = `<option value="ALL">كل المعلمين والمستخدمين (${logs.length})</option>` +
+            uniqueUsers.map(u => `<option value="${u}">${u}</option>`).join('');
+        if (uniqueUsers.includes(prevVal)) filterSel.value = prevVal;
+    }
+
+    renderAuditLogs();
+    renderTransferLogs();
+}
+
+function renderAuditLogs() {
+    const tbody = document.getElementById('auditLogsTable');
+    if (!tbody) return;
+    const filterUser = document.getElementById('auditTeacherFilter')?.value || 'ALL';
+    const logs = (APP_STATE.grade_logs || []).filter(l => filterUser === 'ALL' || l.user_name === filterUser);
+
+    if (!logs.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="color:#64748b;">لا توجد تعديلات مسجلة بعد.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = logs.map(l => `
+        <tr>
+            <td style="font-size:11.5px;">${l.timestamp}</td>
+            <td style="font-weight:bold; color:#1f4e78;">${l.user_name}</td>
+            <td>${l.group}</td>
+            <td style="font-weight:bold;">${l.student_name} (${l.student_id})</td>
+            <td>${l.exam_label}</td>
+            <td style="direction:ltr; font-weight:bold;">
+                <span style="color:#991b1b;">${l.old_val}</span> ➔ <span style="color:#155e3b;">${l.new_val}</span>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function renderTransferLogs() {
+    const tbody = document.getElementById('transferLogsTable');
+    if (!tbody) return;
+    const logs = APP_STATE.transfer_logs || [];
+    if (!logs.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="color:#64748b;">لا توجد عمليات نقل طلاب مسجلة بعد.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = logs.map(t => `
+        <tr>
+            <td style="font-size:11.5px;">${t.timestamp}</td>
+            <td style="font-weight:bold;">${t.student_name} (${t.student_id})</td>
+            <td style="color:#991b1b;">${t.from_group}</td>
+            <td style="color:#155e3b; font-weight:bold;">${t.to_group}</td>
+            <td>${t.by_user}</td>
+            <td>${t.reason || '-'}</td>
+        </tr>
+    `).join('');
+}
+
+// ==================== نقل طالب بين المجموعات (للمراجعين والأدمن فقط) ====================
+function canCurrentUserTransferStudents() {
+    if (!currentUser) return false;
+    return currentUser.role === 'admin' ||
+        currentUser.role === 'reviewer' ||
+        currentUser.is_admin === true ||
+        currentUser.is_reviewer === true;
+}
+
+function openTransferStudentModal() {
+    if (!canCurrentUserTransferStudents()) {
+        alert('عذراً، صلاحية نقل الطلاب متاحة للمراجعين والأدمن فقط!');
+        return;
+    }
+    document.getElementById('transferSearchInp').value = '';
+    document.getElementById('transferReasonInp').value = '';
+
+    const grpSel = document.getElementById('transferTargetGroupSelect');
+    const allGroups = Object.keys(APP_STATE.groups_meta);
+    grpSel.innerHTML = allGroups.map(g => {
+        const tch = APP_STATE.groups_meta[g]?.teacher || 'بدون معلم';
+        return `<option value="${g}">${g} (الشيخ/ ${tch})</option>`;
+    }).join('');
+
+    filterTransferStudentsList();
+    const modal = document.getElementById('transferStudentModal');
+    modal.classList.remove('hidden');
+    modal.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function closeTransferStudentModal() {
+    document.getElementById('transferStudentModal').classList.add('hidden');
+}
+
+function filterTransferStudentsList() {
+    const q = document.getElementById('transferSearchInp').value.trim();
+    const sel = document.getElementById('transferStudentSelect');
+    const filtered = APP_STATE.students.filter(s =>
+        !q || String(s.name).includes(q) || String(s.student_id).includes(q) || String(s.group).includes(q)
+    );
+
+    sel.innerHTML = filtered.map(s =>
+        `<option value="${s.student_id}">${s.name} — [كود: ${s.student_id}] (${s.group})</option>`
+    ).join('');
+
+    onTransferStudentSelected();
+}
+
+function onTransferStudentSelected() {
+    const sid = document.getElementById('transferStudentSelect').value;
+    const st = APP_STATE.students.find(s => String(s.student_id) === String(sid));
+    const infoEl = document.getElementById('transferCurrentInfo');
+    const histEl = document.getElementById('studentHistoryContent');
+
+    if (!st) {
+        infoEl.textContent = 'لا يوجد طالب مطابق للبحث.';
+        histEl.textContent = '-';
+        return;
+    }
+
+    infoEl.innerHTML = `الطالب المحدد: <b>${st.name}</b> (كود: ${st.student_id}) — المجموعة الحالية: <b>${st.group}</b> — المعلم الحالي: <b>الشيخ/ ${st.teacher || '-'}</b>`;
+
+    const history = Array.isArray(st.transfer_history) ? st.transfer_history : [];
+    if (!history.length) {
+        histEl.textContent = 'لم يتم نقل هذا الطالب من قبل.';
+    } else {
+        histEl.innerHTML = history.map(h =>
+            `<div style="padding:4px 0; border-bottom:1px dashed #e2e8f0;">• بتاريخ <b>${h.timestamp}</b>: نُقل من <b>(${h.from_group})</b> إلى <b>(${h.to_group})</b> بواسطة <b>${h.by_user}</b> ${h.reason ? `— السبب: ${h.reason}` : ''}</div>`
+        ).join('');
+    }
+}
+
+async function executeStudentTransfer() {
+    if (!canCurrentUserTransferStudents()) {
+        alert('عذراً، صلاحية نقل الطلاب متاحة للمراجعين والأدمن فقط!');
+        return;
+    }
+    const sid = document.getElementById('transferStudentSelect').value;
+    const targetGroup = document.getElementById('transferTargetGroupSelect').value;
+    const reason = document.getElementById('transferReasonInp').value.trim();
+
+    const st = APP_STATE.students.find(s => String(s.student_id) === String(sid));
+    if (!st) {
+        alert('يرجى اختيار الطالب أولاً!');
+        return;
+    }
+    if (!targetGroup || st.group === targetGroup) {
+        alert('يرجى اختيار مجموعة جديدة مختلفة عن المجموعة الحالية للطالب!');
+        return;
+    }
+
+    const oldGroup = st.group;
+    const targetMeta = APP_STATE.groups_meta[targetGroup] || {};
+    const newTeacher = targetMeta.teacher || '';
+
+    if (!confirm(`هل تؤكد نقل الطالب (${st.name})
+من مجموعة: (${oldGroup})
+إلى مجموعة: (${targetGroup})؟`)) {
+        return;
+    }
+
+    const record = {
+        timestamp: new Date().toLocaleString('ar-EG'),
+        student_id: st.student_id,
+        student_name: st.name,
+        from_group: oldGroup,
+        to_group: targetGroup,
+        by_user: currentUser ? currentUser.name : 'الإدارة',
+        reason: reason
+    };
+
+    // تحديث بيانات الطالب وحفظ سجل التعديلات داخل سجل الطالب وفي السجل العام
+    st.group = targetGroup;
+    st.group_num = targetMeta.group_num || st.group_num;
+    st.teacher = newTeacher;
+    if (!Array.isArray(st.transfer_history)) st.transfer_history = [];
+    st.transfer_history.unshift(record);
+
+    if (!Array.isArray(APP_STATE.transfer_logs)) APP_STATE.transfer_logs = [];
+    APP_STATE.transfer_logs.unshift(record);
+
+    await saveState();
+    onTransferStudentSelected();
+    if (!document.getElementById('viewAdmin').classList.contains('hidden')) {
+        renderAdminGroups();
+        renderAdminReports();
+    }
+    if (!document.getElementById('viewReviewer').classList.contains('hidden')) {
+        renderReviewerGroups();
+    }
+    alert(`تم نقل الطالب (${st.name}) إلى مجموعة (${targetGroup}) وحفظ سجل التعديلات بنجاح ✔`);
 }
 
 // ==================== 4. استيراد وتصدير الإكسيل ====================
@@ -1482,7 +1936,7 @@ function exportExcelFile() {
 // ==================== 5. واجهة المعلم (Teacher) ====================
 function openTeacherView() {
     document.getElementById('viewTeacher').classList.remove('hidden');
-    document.getElementById('teacherWelcome').textContent = `مرحباً فضيلة الشيخ/ة/ ${currentUser.name}`;
+    document.getElementById('teacherWelcome').textContent = `مرحباً الشيخ/ ${currentUser.name}`;
 
     const activeExam = APP_STATE.settings.active_exam;
     if (activeExam === 'none') {
@@ -1564,16 +2018,25 @@ async function saveTeacherGrades(isSubmit) {
         if (!ok) return;
     }
 
+    const examLbl = getExamLabel(activeExam);
     document.querySelectorAll('.tch-exam-inp').forEach(inp => {
         const sid = inp.dataset.sid;
         const st = APP_STATE.students.find(s => String(s.student_id) === String(sid));
-        if (st) st.scores[activeExam] = inp.value.trim();
+        if (st) {
+            const newVal = inp.value.trim();
+            recordGradeAuditLog(st, examLbl, st.scores[activeExam], newVal);
+            st.scores[activeExam] = newVal;
+        }
     });
 
     document.querySelectorAll('.tch-ahkam-inp').forEach(inp => {
         const sid = inp.dataset.sid;
         const st = APP_STATE.students.find(s => String(s.student_id) === String(sid));
-        if (st) st.scores.ahkam = inp.value.trim();
+        if (st) {
+            const newVal = inp.value.trim();
+            recordGradeAuditLog(st, 'الأحكام', st.scores.ahkam, newVal);
+            st.scores.ahkam = newVal;
+        }
     });
 
     const sub = getSubmissionRecord(activeExam, groupName);
@@ -1603,14 +2066,14 @@ function notifyReviewerWhatsApp() {
         alert('لم يتم تسجيل رقم واتساب للمراجع في النظام بعد.');
         return;
     }
-    const msg = `السلام عليكم، تم الانتهاء من رصد درجات مجموعة (${groupName}) في اختبار (${getExamLabel(activeExam)}) بواسطة أ/ ${currentUser.name}، وهي جاهزة للمراجعة والاعتماد.`;
+    const msg = `السلام عليكم، تم الانتهاء من رصد درجات مجموعة (${groupName}) في اختبار (${getExamLabel(activeExam)}) بواسطة الشيخ/ ${currentUser.name}، وهي جاهزة للمراجعة والاعتماد.`;
     openWhatsApp(reviewer.phone, msg);
 }
 
 // ==================== 6. واجهة المراجع (Reviewer) ====================
 function openReviewerView() {
     document.getElementById('viewReviewer').classList.remove('hidden');
-    document.getElementById('reviewerWelcome').textContent = `مرحباً فضيلة الشيخ/ة/ ${currentUser.name} (لجنة المراجعة)`;
+    document.getElementById('reviewerWelcome').textContent = `مرحباً الشيخ/ ${currentUser.name} (لجنة المراجعة)`;
     const activeExam = APP_STATE.settings.active_exam;
     document.getElementById('reviewerExamBanner').textContent = `الاختبار الجاري مراجعته: ${getExamLabel(activeExam)}`;
     renderReviewerGroups();
@@ -1736,7 +2199,7 @@ async function reviewerReturn(groupName, noteInputId) {
     const teacherUser = APP_STATE.users.find(u => u.name === meta.teacher && u.role === 'teacher');
     if (teacherUser && teacherUser.phone) {
         if (confirm('تمت إعادة المجموعة للمعلم بنجاح.\nهل تود إرسال تنبيه بالملاحظة إلى المعلم عبر واتساب الآن؟')) {
-            const msg = `السلام عليكم أ/ ${teacherUser.name}\nتمت مراجعة درجات مجموعة (${groupName}) في اختبار (${getExamLabel(activeExam)})، ويوجد ملاحظة للتعديل:\n"${note}"\nيرجى الدخول على الرابط لإتمام التعديل.`;
+            const msg = `السلام عليكم الشيخ/ ${teacherUser.name}\nتمت مراجعة درجات مجموعة (${groupName}) في اختبار (${getExamLabel(activeExam)})، ويوجد ملاحظة للتعديل:\n"${note}"\nيرجى الدخول على الرابط لإتمام التعديل.`;
             openWhatsApp(teacherUser.phone, msg);
         }
     } else {
