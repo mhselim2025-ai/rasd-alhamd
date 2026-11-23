@@ -2732,9 +2732,7 @@ function isMainAdminUser() {
 function getSelectedGiftRecipients() {
     const checkedNames = Array.from(document.querySelectorAll('.gift-st-chk:checked')).map(c => c.value.trim()).filter(Boolean);
     const manualRaw = document.getElementById('giftManualNamesInp') ? document.getElementById('giftManualNamesInp').value : '';
-    const manualNames = manualRaw.split(/
-?
-/).map(s => s.trim()).filter(Boolean);
+    const manualNames = manualRaw.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
     const combined = [...checkedNames, ...manualNames];
     return combined.length ? combined : ['اسم الدارس المكرّم'];
 }
