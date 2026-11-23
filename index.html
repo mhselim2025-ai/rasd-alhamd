@@ -231,7 +231,10 @@
 
         <!-- تبويب 1: التحكم في الاختبار وإضافة اختبارات جديدة -->
         <div id="tabControl" class="card">
-            <h3 style="margin-top:0; color:#1f4e78;">التحكم في الاختبار المفتوح للرصد حالياً</h3>
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+                <h3 style="margin:0; color:#1f4e78;">التحكم في الاختبار المفتوح للرصد حالياً</h3>
+                <button class="btn btn-success btn-sm" onclick="openAddStudentModal()">➕ إضافة طالب جديد</button>
+            </div>
             <div class="grid-2" style="align-items:end; margin-bottom:16px;">
                 <div>
                     <label style="font-weight:bold; font-size:13px; display:block; margin-bottom:6px;">الاختبار النشط حالياً:</label>
@@ -274,7 +277,13 @@
         <div id="tabReports" class="card hidden">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
                 <h3 style="margin:0; color:#1f4e78;">التقارير الإحصائية وسجل التعديلات</h3>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button class="btn btn-success btn-sm" onclick="openAddStudentModal()">➕ إضافة طالب جديد</button>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn btn-success btn-sm" onclick="openAddStudentModal()">➕ إضافة طالب جديد</button>
                 <button class="btn btn-primary btn-sm" onclick="openTransferStudentModal()">🔄 نقل طالب بين المجموعات</button>
+            </div>
+                </div>
             </div>
             <div id="reportsExamTitle" style="font-weight:bold; color:#155e3b; margin-bottom:12px;"></div>
 
@@ -505,7 +514,10 @@
                 <h3 id="reviewerWelcome" style="margin:0 0 6px 0; color:#1f4e78;">لوحة المراجعة والاعتماد</h3>
                 <div id="reviewerExamBanner" style="font-weight:bold; color:#155e3b;"></div>
             </div>
-            <button class="btn btn-primary btn-sm" onclick="openTransferStudentModal()">🔄 نقل طالب بين المجموعات</button>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn btn-success btn-sm" onclick="openAddStudentModal()">➕ إضافة طالب جديد</button>
+                <button class="btn btn-primary btn-sm" onclick="openTransferStudentModal()">🔄 نقل طالب بين المجموعات</button>
+            </div>
         </div>
 
         <div id="reviewerListContainer"></div>
@@ -584,6 +596,48 @@
             <b style="font-size:12.5px; color:#1f4e78;">سجل التنقلات السابق لهذا الطالب:</b>
             <div id="studentHistoryContent" style="font-size:12px; color:#475569; margin-top:4px;">اختر طالباً لعرض سجله.</div>
         </div>
+    </div>
+
+    <!-- نافذة إضافة طالب جديد إلى أي مجموعة -->
+    <div id="addStudentModal" class="card hidden" style="border:2px solid #1f4e78; background:#eff6ff;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h3 style="margin:0; color:#1f4e78;">➕ إضافة طالب جديد لقاعدة البيانات</h3>
+            <button class="btn btn-light btn-sm" onclick="closeAddStudentModal()">إغلاق</button>
+        </div>
+
+        <div class="grid-2" style="margin-bottom:10px;">
+            <div>
+                <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px;">١. اسم الطالب (رباعي أو ثلاثي):</label>
+                <input type="text" id="newStNameInp" class="input-field" placeholder="اكتب اسم الطالب بالكامل...">
+            </div>
+            <div>
+                <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px;">٢. كود / رقم الطالب (فريد لا يتكرر):</label>
+                <div style="display:flex; gap:6px; align-items:center;">
+                    <input type="text" id="newStIdInp" class="input-field" style="direction:ltr; text-align:center; font-weight:bold;" placeholder="رقم الطالب" oninput="validateNewStudentIdLive()">
+                    <button type="button" class="btn btn-light btn-sm" title="توليد كود جديد تلقائي" onclick="document.getElementById('newStIdInp').value=generateNextStudentId(); validateNewStudentIdLive();">🔄</button>
+                </div>
+                <div id="newStIdStatus" style="font-size:11.5px; font-weight:bold; margin-top:4px; text-align:center;"></div>
+            </div>
+        </div>
+
+        <div class="grid-3" style="margin-bottom:12px;">
+            <div>
+                <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px;">٣. المجموعة:</label>
+                <select id="newStGroupSelect" class="select-field" onchange="onNewStudentGroupChanged()"></select>
+            </div>
+            <div>
+                <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px;">٤. المستوى (اختياري):</label>
+                <input type="text" id="newStLevelInp" class="input-field" placeholder="مثلاً: 5 - 7">
+            </div>
+            <div>
+                <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px;">٥. الفرقة (اختياري):</label>
+                <input type="text" id="newStSectionInp" class="input-field" placeholder="مثلاً: السادسة">
+            </div>
+        </div>
+
+        <div id="newStGroupInfo" class="alert-box alert-info" style="margin-bottom:10px; padding:8px 12px; font-size:12.5px;"></div>
+
+        <button id="btnConfirmAddStudent" class="btn btn-success" style="width:100%; padding:11px;" onclick="executeAddNewStudent()">حفظ وإضافة الطالب للمجموعة ✔</button>
     </div>
 
 </div>
@@ -783,6 +837,8 @@ function switchActivePortal(target) {
     document.getElementById('viewTeacher').classList.add('hidden');
     document.getElementById('viewReviewer').classList.add('hidden');
     document.getElementById('adminEditModal').classList.add('hidden');
+    if (document.getElementById('addStudentModal')) document.getElementById('addStudentModal').classList.add('hidden');
+    if (document.getElementById('transferStudentModal')) document.getElementById('transferStudentModal').classList.add('hidden');
 
     if (target === 'teacher') openTeacherView();
     else if (target === 'reviewer') openReviewerView();
@@ -847,6 +903,8 @@ function logout() {
     document.getElementById('viewTeacher').classList.add('hidden');
     document.getElementById('viewReviewer').classList.add('hidden');
     document.getElementById('adminEditModal').classList.add('hidden');
+    if (document.getElementById('addStudentModal')) document.getElementById('addStudentModal').classList.add('hidden');
+    if (document.getElementById('transferStudentModal')) document.getElementById('transferStudentModal').classList.add('hidden');
     document.getElementById('roleSwitcherBar').classList.add('hidden');
     document.getElementById('changeMyCodeModal').classList.add('hidden');
     document.getElementById('btnChangeMyCode').classList.add('hidden');
@@ -1463,6 +1521,8 @@ function openAdminEditGroup(groupName) {
 
 function closeAdminModal() {
     document.getElementById('adminEditModal').classList.add('hidden');
+    if (document.getElementById('addStudentModal')) document.getElementById('addStudentModal').classList.add('hidden');
+    if (document.getElementById('transferStudentModal')) document.getElementById('transferStudentModal').classList.add('hidden');
     adminEditingGroup = null;
 }
 
@@ -1780,6 +1840,187 @@ async function executeStudentTransfer() {
     alert(`تم نقل الطالب (${st.name}) إلى مجموعة (${targetGroup}) وحفظ سجل التعديلات بنجاح ✔`);
 }
 
+// ==================== إضافة طالب جديد (مع ضمان تفرد كود الطالب 100%) ====================
+function normalizeStudentId(raw) {
+    return String(raw ?? '').trim().toUpperCase();
+}
+
+function findStudentById(sid) {
+    const target = normalizeStudentId(sid);
+    if (!target) return null;
+    return APP_STATE.students.find(s => normalizeStudentId(s.student_id) === target) || null;
+}
+
+function generateNextStudentId() {
+    const existingIds = new Set(APP_STATE.students.map(s => normalizeStudentId(s.student_id)));
+    (APP_STATE.transfer_logs || []).forEach(t => {
+        if (t.student_id) existingIds.add(normalizeStudentId(t.student_id));
+    });
+
+    let maxNum = 10000;
+    existingIds.forEach(idStr => {
+        if (/^\d+$/.test(idStr)) {
+            const n = parseInt(idStr, 10);
+            if (!isNaN(n) && n >= maxNum) maxNum = n + 1;
+        }
+    });
+    while (existingIds.has(String(maxNum))) {
+        maxNum++;
+    }
+    return String(maxNum);
+}
+
+function validateNewStudentIdLive() {
+    const inp = document.getElementById('newStIdInp');
+    const statusEl = document.getElementById('newStIdStatus');
+    const submitBtn = document.getElementById('btnConfirmAddStudent');
+    if (!inp || !statusEl) return true;
+
+    const cleanId = normalizeStudentId(inp.value);
+    if (!cleanId) {
+        statusEl.style.color = '#991b1b';
+        statusEl.textContent = '⚠ يرجى إدخال كود الطالب';
+        if (submitBtn) submitBtn.disabled = true;
+        return false;
+    }
+
+    const existing = findStudentById(cleanId);
+    if (existing) {
+        statusEl.style.color = '#991b1b';
+        statusEl.textContent = `⛔ مكرر! مستخدم بالفعل للطالب: ${existing.name} (${existing.group})`;
+        if (submitBtn) submitBtn.disabled = true;
+        return false;
+    }
+
+    statusEl.style.color = '#155e3b';
+    statusEl.textContent = '✔ كود فريد ومتاح للاستخدام';
+    if (submitBtn) submitBtn.disabled = false;
+    return true;
+}
+
+async function openAddStudentModal() {
+    if (!canCurrentUserTransferStudents()) {
+        alert('عذراً، صلاحية إضافة الطلاب متاحة للمراجعين والأدمن فقط!');
+        return;
+    }
+    try {
+        await loadState();
+    } catch (e) {}
+
+    document.getElementById('newStNameInp').value = '';
+    document.getElementById('newStIdInp').value = generateNextStudentId();
+    validateNewStudentIdLive();
+
+    const grpSel = document.getElementById('newStGroupSelect');
+    const allGroups = Object.keys(APP_STATE.groups_meta);
+    if (!allGroups.length) {
+        alert('لا توجد مجموعات مسجلة في النظام بعد! يرجى استيراد شيت الإكسيل أولاً.');
+        return;
+    }
+    grpSel.innerHTML = allGroups.map(g => {
+        const tch = APP_STATE.groups_meta[g]?.teacher || 'بدون معلم';
+        return `<option value="${g}">${g} (الشيخ/ ${tch})</option>`;
+    }).join('');
+
+    onNewStudentGroupChanged();
+    const modal = document.getElementById('addStudentModal');
+    modal.classList.remove('hidden');
+    modal.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function closeAddStudentModal() {
+    document.getElementById('addStudentModal').classList.add('hidden');
+}
+
+function onNewStudentGroupChanged() {
+    const gName = document.getElementById('newStGroupSelect').value;
+    const meta = APP_STATE.groups_meta[gName] || {};
+    const sampleSt = APP_STATE.students.find(s => s.group === gName);
+    if (sampleSt) {
+        document.getElementById('newStLevelInp').value = sampleSt.level || '';
+        document.getElementById('newStSectionInp').value = sampleSt.section || '';
+    }
+    const infoEl = document.getElementById('newStGroupInfo');
+    if (infoEl) {
+        infoEl.innerHTML = `سيُضاف الطالب إلى مجموعة <b>(${gName})</b> — معلم المجموعة: <b>الشيخ/ ${meta.teacher || 'غير محدد'}</b> — امتحان أحكام: <b>${meta.has_ahkam ? 'نعم' : 'لا'}</b>`;
+    }
+}
+
+async function executeAddNewStudent() {
+    if (!canCurrentUserTransferStudents()) {
+        alert('عذراً، صلاحية إضافة الطلاب متاحة للمراجعين والأدمن فقط!');
+        return;
+    }
+    const name = document.getElementById('newStNameInp').value.trim();
+    const sid = normalizeStudentId(document.getElementById('newStIdInp').value);
+    const groupName = document.getElementById('newStGroupSelect').value;
+    const level = document.getElementById('newStLevelInp').value.trim();
+    const section = document.getElementById('newStSectionInp').value.trim();
+
+    if (!name) {
+        alert('يرجى إدخال اسم الطالب أولاً!');
+        return;
+    }
+    if (!sid) {
+        alert('يرجى إدخال كود / رقم الطالب!');
+        return;
+    }
+
+    // مزامنة فورية مع السحابة قبل الحفظ لمنع أي تكرار متزامن من جهاز آخر
+    await loadState();
+    const duplicateSt = findStudentById(sid);
+    if (duplicateSt) {
+        validateNewStudentIdLive();
+        alert(`⛔ لا يمكن الحفظ! كود الطالب (${sid}) مستخدم بالفعل للطالب:
+${duplicateSt.name} — مجموعة (${duplicateSt.group})
+يرجى اختيار كود آخر أو الضغط على زر التوليد التلقائي 🔄.`);
+        return;
+    }
+
+    const meta = APP_STATE.groups_meta[groupName] || {};
+    const scoresObj = { exam_1: '', exam_2: '', exam_3: '', exam_4: '', ahkam: '' };
+    (APP_STATE.exams || []).forEach(ex => {
+        if (!(ex.key in scoresObj)) scoresObj[ex.key] = '';
+    });
+
+    const newStudent = {
+        student_id: sid,
+        name: name,
+        group: groupName,
+        group_num: meta.group_num || '',
+        level: level,
+        section: section,
+        teacher: meta.teacher || '',
+        scores: scoresObj
+    };
+
+    APP_STATE.students.push(newStudent);
+
+    // تسجيل الإضافة في سجل التنقلات/الحركات للمتابعة
+    if (!Array.isArray(APP_STATE.transfer_logs)) APP_STATE.transfer_logs = [];
+    APP_STATE.transfer_logs.unshift({
+        timestamp: new Date().toLocaleString('ar-EG'),
+        student_id: sid,
+        student_name: name,
+        from_group: 'طالب جديد ➕',
+        to_group: groupName,
+        by_user: currentUser ? currentUser.name : 'الإدارة',
+        reason: 'إضافة طالب جديد للمنظومة'
+    });
+
+    await saveState();
+    closeAddStudentModal();
+
+    if (!document.getElementById('viewAdmin').classList.contains('hidden')) {
+        renderAdminGroups();
+        renderAdminReports();
+    }
+    if (!document.getElementById('viewReviewer').classList.contains('hidden')) {
+        renderReviewerGroups();
+    }
+    alert(`تمت إضافة الطالب (${name}) بكود فريد (${sid}) إلى مجموعة (${groupName}) بنجاح ✔`);
+}
+
 // ==================== 4. استيراد وتصدير الإكسيل ====================
 function importExcelFile() {
     const fileInput = document.getElementById('excelFileInput');
@@ -1807,12 +2048,22 @@ function importExcelFile() {
             const newStudents = [];
             const newGroupsMeta = {};
             const teacherMap = {};
+            const seenStudentIds = new Set();
+            let autoSidCounter = 10001;
 
             for (let r = headerIdx + 1; r < rows.length; r++) {
                 const row = rows[r];
                 const studentName = String(row[4] || '').trim();
-                const studentId = String(row[5] || '').trim();
+                let studentId = String(row[5] || '').trim().toUpperCase();
                 if (!studentName && !studentId) continue;
+
+                if (!studentId || seenStudentIds.has(studentId)) {
+                    while (seenStudentIds.has(String(autoSidCounter))) {
+                        autoSidCounter++;
+                    }
+                    studentId = String(autoSidCounter++);
+                }
+                seenStudentIds.add(studentId);
 
                 const groupNum = String(row[0] || '').trim();
                 const level = String(row[1] || '').trim();
