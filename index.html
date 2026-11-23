@@ -173,7 +173,7 @@
     </div>
     <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
         <span id="cloudStatus" class="sync-indicator">وضع التخزين: محلي (تجريبي)</span>
-        <button id="btnOpenGiftStudio" class="btn btn-sm" style="background:#f59e0b; color:#1e293b; font-weight:bold;" onclick="openGiftStudioModal()">🎖 إهداء وشهادات</button>
+        <button id="btnOpenGiftStudio" class="btn btn-sm hidden" style="background:#f59e0b; color:#1e293b; font-weight:bold;" onclick="openGiftStudioModal()">🎖 إهداء وشهادات</button>
         <button id="btnChangeMyCode" class="btn btn-warning btn-sm hidden" onclick="openChangeMyCodeModal()">تغيير الكود 🔑</button>
         <button id="btnLogout" class="btn btn-light btn-sm hidden" onclick="logout()">خروج</button>
     </div>
@@ -921,6 +921,7 @@ async function handleLogin(isAuto = false) {
     document.getElementById('viewLogin').classList.add('hidden');
     document.getElementById('btnLogout').classList.remove('hidden');
     document.getElementById('btnChangeMyCode').classList.remove('hidden');
+    document.getElementById('btnOpenGiftStudio').classList.remove('hidden');
 
     const canTeach = (user.role === 'teacher') || (Array.isArray(user.groups) && user.groups.length > 0 && user.role !== 'reviewer');
     const canReview = (user.role === 'reviewer') || (user.is_reviewer === true);
@@ -1023,6 +1024,8 @@ function logout() {
     document.getElementById('roleSwitcherBar').classList.add('hidden');
     document.getElementById('changeMyCodeModal').classList.add('hidden');
     document.getElementById('btnChangeMyCode').classList.add('hidden');
+    document.getElementById('btnOpenGiftStudio').classList.add('hidden');
+    if (document.getElementById('giftStudioModal')) document.getElementById('giftStudioModal').classList.add('hidden');
     document.getElementById('btnLogout').classList.add('hidden');
     document.getElementById('viewLogin').classList.remove('hidden');
 }
@@ -2980,12 +2983,10 @@ ${reasonText}`;
     // في حال الفتح من الكمبيوتر: تنزيل الصورة تلقائياً وفتح واتساب أو فيسبوك لإرفاقها
     downloadGiftPNG();
     if (platform === 'whatsapp') {
-        alert('تم تنزيل صورة الشهادة على جهازك ✔
-سيتم فتح واتساب الآن لإرسالها في المحادثة أو رفعها كـ «حالة».');
+        alert('تم تنزيل صورة الشهادة على جهازك ✔\nسيتم فتح واتساب الآن لإرسالها في المحادثة أو رفعها كـ «حالة».');
         window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank');
     } else {
-        alert('تم تنزيل صورة الشهادة على جهازك ✔
-سيتم فتح فيسبوك الآن لنشر الصورة وتهنئة الدارس.');
+        alert('تم تنزيل صورة الشهادة على جهازك ✔\nسيتم فتح فيسبوك الآن لنشر الصورة وتهنئة الدارس.');
         window.open('https://www.facebook.com/', '_blank');
     }
 }
