@@ -2499,7 +2499,7 @@ function renderAdminReports() {
         const prevVal = filterSel.value || 'ALL';
         const logs = APP_STATE.grade_logs || [];
         const uniqueUsers = Array.from(new Set(logs.map(l => l.user_name).filter(Boolean)));
-        filterSel.innerHTML = `<option value="ALL">كل المعلمين والمستخدمين (${logs.length})</option>` +
+        filterSel.innerHTML = `<option value="ALL">كل المعلمين والمستخدمين</option>` +
             uniqueUsers.map(u => `<option value="${u}">${u}</option>`).join('');
         if (uniqueUsers.includes(prevVal)) filterSel.value = prevVal;
     }
@@ -2507,7 +2507,6 @@ function renderAdminReports() {
     renderAuditLogs();
     renderTransferLogs();
 
-    // إظهار سجل الدخول والأجهزة للمدير العام أو من منحه الصلاحية فقط
     const loginSec = document.getElementById('adminLoginActivitySection');
     if (loginSec) {
         const canSeeLogin = canCurrentUserViewLoginLogs();
@@ -2516,57 +2515,121 @@ function renderAdminReports() {
     }
 }
 
+let expandedAuditGroupKeys = new Set();
+
+function toggleAuditGroupCard(cardKey) {
+    const box = document.getElementById(`auditGroupBox_${cardKey}`);
+    if (!box) return;
+    const isHidden = box.classList.toggle('hidden');
+    if (isHidden) expandedAuditGroupKeys.delete(cardKey);
+    else expandedAuditGroupKeys.add(cardKey);
+}
+
+// عرض سجل التعديلات كأيقونات/بطاقات مجمّعة لكل معلم ومجموعة (بما في ذلك السجلات القديمة المفصلة)
 function renderAuditLogs() {
     const tbody = document.getElementById('auditLogsTable');
     if (!tbody) return;
     const filterUser = document.getElementById('auditTeacherFilter')?.value || 'ALL';
-    const logs = (APP_STATE.grade_logs || []).filter(l => filterUser === 'ALL' || l.user_name === filterUser);
+    const rawLogs = (APP_STATE.grade_logs || []).filter(l => filterUser === 'ALL' || l.user_name === filterUser);
 
-    if (!logs.length) {
+    if (!rawLogs.length) {
         tbody.innerHTML = '<tr><td colspan="5" style="color:#64748b;">لا توجد عمليات رصد أو تعديل مسجلة بعد.</td></tr>';
         return;
     }
 
-    tbody.innerHTML = logs.map((l, idx) => {
-        // دعم السجلات المجمّعة الجديدة والسجلات الفردية القديمة إن وجدت
-        if (Array.isArray(l.items)) {
-            const logDomId = l.id || `idx_${idx}`;
-            const detailRows = l.items.map(it => `
-                <div style="padding:3px 6px; border-bottom:1px dashed #e2e8f0; display:flex; justify-content:space-between; gap:8px; font-size:12px;">
-                    <span><b>${it.student_name}</b> (${it.student_id}) — <i>${it.field}</i></span>
-                    <span style="direction:ltr; font-weight:bold;"><span style="color:#991b1b;">${it.old_val}</span> ➔ <span style="color:#155e3b;">${it.new_val}</span></span>
-                </div>
-            `).join('');
+    // تجميع كافة السجلات (المجمّعة والقديمة الفردية) في أيقونة واحدة لكل (معلم + مجموعة)
+    const groupedMap = new Map();
 
-            return `
-            <tr>
-                <td style="font-size:11.5px;">${l.timestamp}</td>
-                <td style="font-weight:bold; color:#1f4e78;">${l.user_name}</td>
-                <td style="font-weight:bold;">${l.group}</td>
-                <td>${l.exam_label}</td>
-                <td style="text-align:right;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
-                        <span><b>${l.action_label || 'تعديل'}:</b> تم رصد/تعديل درجات <b>(${l.count || l.items.length})</b> دارس في سجل واحد</span>
-                        <button type="button" class="btn btn-light btn-sm" style="padding:2px 8px; font-size:11px;" onclick="toggleBatchLogDetails('${logDomId}')">عرض التفاصيل ▼</button>
-                    </div>
-                    <div id="batchLogDetail_${logDomId}" class="hidden" style="margin-top:6px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; padding:4px; max-height:160px; overflow-y:auto;">
-                        ${detailRows}
-                    </div>
-                </td>
-            </tr>`;
+    rawLogs.forEach((l) => {
+        const userName = l.user_name || 'غير معروف';
+        const groupName = l.group || 'بدون مجموعة';
+        const gKey = `${userName}__${groupName}`;
+
+        if (!groupedMap.has(gKey)) {
+            groupedMap.set(gKey, {
+                key: gKey,
+                user_name: userName,
+                group: groupName,
+                last_timestamp: l.timestamp || '',
+                total_changes: 0,
+                entries: []
+            });
         }
 
-        return `
-        <tr>
-            <td style="font-size:11.5px;">${l.timestamp}</td>
-            <td style="font-weight:bold; color:#1f4e78;">${l.user_name}</td>
-            <td>${l.group}</td>
-            <td>${l.exam_label || '-'}</td>
-            <td style="text-align:right;">
-                <b>${l.student_name}</b> (${l.student_id}): <span style="color:#991b1b;">${l.old_val}</span> ➔ <span style="color:#155e3b; font-weight:bold;">${l.new_val}</span>
-            </td>
-        </tr>`;
-    }).join('');
+        const bucket = groupedMap.get(gKey);
+        if (Array.isArray(l.items)) {
+            bucket.total_changes += l.items.length;
+            bucket.entries.push({
+                timestamp: l.timestamp || '',
+                exam_label: l.exam_label || '',
+                action_label: l.action_label || 'تعديل',
+                items: l.items
+            });
+        } else {
+            bucket.total_changes += 1;
+            bucket.entries.push({
+                timestamp: l.timestamp || '',
+                exam_label: l.exam_label || '',
+                action_label: 'تعديل درجة',
+                items: [{
+                    student_name: l.student_name || '',
+                    student_id: l.student_id || '',
+                    field: l.exam_label || '',
+                    old_val: l.old_val || '(فارغ)',
+                    new_val: l.new_val || '(فارغ)'
+                }]
+            });
+        }
+    });
+
+    const buckets = Array.from(groupedMap.values());
+
+    tbody.innerHTML = `
+    <tr>
+        <td colspan="5" style="background:#ffffff; padding:10px; text-align:right;">
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(270px, 1fr)); gap:10px;">
+                ${buckets.map((b, i) => {
+                    const safeId = `grp_${i}_${b.key.replace(/[^a-zA-Z0-9؀-ۿ]/g, '_')}`;
+                    const isOpen = expandedAuditGroupKeys.has(safeId);
+
+                    const detailsHtml = b.entries.map(en => {
+                        const rows = (en.items || []).map(it => `
+                            <div style="padding:3px 6px; border-bottom:1px dashed #e2e8f0; display:flex; justify-content:space-between; gap:6px; font-size:11.5px;">
+                                <span><b>${it.student_name}</b> (${it.student_id})</span>
+                                <span style="direction:ltr; font-weight:bold;"><span style="color:#991b1b;">${it.old_val}</span> ➔ <span style="color:#155e3b;">${it.new_val}</span></span>
+                            </div>
+                        `).join('');
+                        return `
+                        <div style="margin-bottom:8px; background:#fff; border:1px solid #cbd5e1; border-radius:6px; overflow:hidden;">
+                            <div style="background:#eff6ff; padding:4px 8px; font-size:11px; font-weight:bold; color:#1f4e78; display:flex; justify-content:space-between;">
+                                <span>${en.exam_label || ''} (${en.action_label})</span>
+                                <span>${en.timestamp}</span>
+                            </div>
+                            ${rows}
+                        </div>`;
+                    }).join('');
+
+                    return `
+                    <div style="border:1.5px solid ${isOpen ? '#1f4e78' : '#cbd5e1'}; border-radius:10px; background:#f8fafc; overflow:hidden;">
+                        <button type="button" onclick="toggleAuditGroupCard('${safeId}')" style="width:100%; border:none; background:${isOpen ? '#eff6ff' : '#f8fafc'}; padding:10px 12px; cursor:pointer; text-align:right; font-family:inherit; display:flex; flex-direction:column; gap:5px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
+                                <span style="font-weight:bold; font-size:13px; color:#1f4e78;">👨‍🏫 ${b.user_name}</span>
+                                <span class="badge badge-approved">${b.total_changes} تعديل</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; color:#334155;">
+                                <span>📚 مجموعة: <b>${b.group}</b></span>
+                                <span style="font-size:11px; color:#1f4e78; font-weight:bold;">${isOpen ? 'إخفاء ▲' : 'فتح السجل ▼'}</span>
+                            </div>
+                            <div style="font-size:10.5px; color:#64748b;">آخر تحديث: ${b.last_timestamp}</div>
+                        </button>
+                        <div id="auditGroupBox_${safeId}" class="${isOpen ? '' : 'hidden'}" style="padding:8px; background:#ffffff; border-top:1px solid #e2e8f0; max-height:240px; overflow-y:auto;">
+                            ${detailsHtml}
+                        </div>
+                    </div>`;
+                }).join('')}
+            </div>
+        </td>
+    </tr>`;
 }
 
 function renderLoginActivityLogs() {
