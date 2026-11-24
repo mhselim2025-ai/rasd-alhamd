@@ -175,6 +175,7 @@
     </div>
     <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
         <span id="cloudStatus" class="sync-indicator">وضع التخزين: محلي (تجريبي)</span>
+        <button id="btnPendingSync" class="btn btn-warning btn-sm hidden" onclick="flushPendingOfflineSync(true)" title="درجات محفوظة محلياً بانتظار المزامنة">⏳ مزامنة معلقة (<span id="pendingSyncCount">0</span>)</button>
         <button id="btnOpenGiftStudio" class="btn btn-sm hidden" style="background:#f59e0b; color:#1e293b; font-weight:bold;" onclick="openGiftStudioModal()">🎖 إهداء وشهادات</button>
         <button id="btnChangeMyCode" class="btn btn-warning btn-sm hidden" onclick="openChangeMyCodeModal()">تغيير الكود 🔑</button>
         <button id="btnLogout" class="btn btn-light btn-sm hidden" onclick="logout()">خروج</button>
@@ -293,6 +294,7 @@
                 <div style="display:flex; gap:8px; flex-wrap:wrap;">
                     <button class="btn btn-success btn-sm" onclick="openAddStudentModal()">➕ إضافة طالب جديد</button>
                     <button class="btn btn-primary btn-sm" onclick="openTransferStudentModal()">🔄 نقل طالب بين المجموعات</button>
+                    <button class="btn btn-warning btn-sm" onclick="openEditDeleteStudentModal()">✏️ تعديل / حذف طالب</button>
                 </div>
             </div>
             <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px; background:#f0fdf4; padding:8px 12px; border-radius:8px; border:1px solid #86efac;">
@@ -613,6 +615,7 @@
                 <select id="reviewerExamSelect" class="select-field" style="width:220px; padding:7px; font-size:13px; font-weight:bold;" onchange="renderReviewerGroups()"></select>
                 <button class="btn btn-success btn-sm" onclick="openAddStudentModal()">➕ إضافة طالب جديد</button>
                 <button class="btn btn-primary btn-sm" onclick="openTransferStudentModal()">🔄 نقل طالب بين المجموعات</button>
+                <button class="btn btn-warning btn-sm" onclick="openEditDeleteStudentModal()">✏️ تعديل / حذف طالب</button>
             </div>
         </div>
 
@@ -691,6 +694,37 @@
         <div id="studentHistoryBox" style="margin-top:14px; background:#fff; padding:10px; border-radius:8px; border:1px solid #cbd5e1;">
             <b style="font-size:12.5px; color:#1f4e78;">سجل التنقلات السابق لهذا الطالب:</b>
             <div id="studentHistoryContent" style="font-size:12px; color:#475569; margin-top:4px;">اختر طالباً لعرض سجله.</div>
+        </div>
+    </div>
+
+    <!-- نافذة تعديل اسم طالب أو حذفه من مجموعة (متاحة للمراجعين والأدمن فقط) -->
+    <div id="editDeleteStudentModal" class="card hidden" style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:94%; max-width:560px; z-index:999; border:2.5px solid #b45309; background:#ffffff; box-shadow:0 20px 50px rgba(0,0,0,0.35);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h3 style="margin:0; color:#92400e;">✏️ تعديل اسم طالب أو حذفه من مجموعة</h3>
+            <button class="btn btn-light btn-sm" onclick="closeEditDeleteStudentModal()">إغلاق</button>
+        </div>
+
+        <div class="grid-2" style="margin-bottom:10px;">
+            <div>
+                <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px;">١. ابحث عن الطالب بالاسم أو الكود:</label>
+                <input type="text" id="edStSearchInp" class="input-field" placeholder="اكتب اسم الطالب أو رقمه..." oninput="filterEditDeleteStudentsList()">
+            </div>
+            <div>
+                <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px;">٢. اختر الطالب:</label>
+                <select id="edStSelect" class="select-field" onchange="onEditDeleteStudentSelected()"></select>
+            </div>
+        </div>
+
+        <div id="edStCurrentInfo" class="alert-box alert-info" style="margin-bottom:10px; padding:8px 12px; font-size:12.5px;"></div>
+
+        <div style="margin-bottom:12px;">
+            <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px;">٣. تعديل اسم الطالب:</label>
+            <input type="text" id="edStNewNameInp" class="input-field" placeholder="اكتب الاسم الجديد للطالب...">
+        </div>
+
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button type="button" class="btn btn-primary" style="flex:1; padding:10px;" onclick="executeRenameStudent()">💾 حفظ الاسم الجديد ✔</button>
+            <button type="button" class="btn btn-danger" style="padding:10px 14px;" onclick="executeDeleteStudentFromGroup()">🗑 حذف الطالب من المجموعة</button>
         </div>
     </div>
 
@@ -1239,96 +1273,184 @@ function initStorage() {
     rebuildStudentIndexes();
 }
 
-// قراءة الحالة السحابية (تدعم المستند المجمّع وتكتشف تلقائياً المجموعات المقسّمة إن وُجدت)
+// ==================== قاعدة البيانات المحلية وقائمة انتظار مزامنة الدرجات ====================
+const PENDING_GRADES_STORAGE_KEY = 'alhamd_pending_grades_v1';
+let isFlushingOfflineQueue = false;
+
+function getPendingGradeQueue() {
+    try {
+        const raw = localStorage.getItem(PENDING_GRADES_STORAGE_KEY);
+        const arr = raw ? JSON.parse(raw) : [];
+        return Array.isArray(arr) ? arr : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function setPendingGradeQueue(queue) {
+    try {
+        localStorage.setItem(PENDING_GRADES_STORAGE_KEY, JSON.stringify(Array.isArray(queue) ? queue : []));
+    } catch (e) {
+        console.warn('Pending queue localStorage warning:', e);
+    }
+    updatePendingSyncBadgeUI();
+}
+
+function updatePendingSyncBadgeUI() {
+    const q = getPendingGradeQueue();
+    const btn = document.getElementById('btnPendingSync');
+    const cntEl = document.getElementById('pendingSyncCount');
+    if (cntEl) cntEl.textContent = String(q.length);
+    if (btn) btn.classList.toggle('hidden', q.length === 0);
+}
+
+// حفظ حزمة درجات محلياً في قائمة الانتظار لضمان عدم ضياعها عند انقطاع النت أو فشل المزامنة
+function enqueuePendingGradeSave(payload) {
+    const q = getPendingGradeQueue();
+    const idx = q.findIndex(item => item.groupName === payload.groupName && item.activeExam === payload.activeExam);
+    if (idx !== -1) {
+        q[idx] = { ...q[idx], ...payload, queuedAt: new Date().toISOString() };
+    } else {
+        q.push({ ...payload, queuedAt: new Date().toISOString() });
+    }
+    setPendingGradeQueue(q);
+}
+
+// دمج أي تغييرات درجات محفوظة محلياً فوق حالة معينة دون حذف الدرجات المدخلة
+function mergePendingGradesOntoState(targetState) {
+    const q = getPendingGradeQueue();
+    if (!q.length || !targetState) return false;
+    const stById = new Map((targetState.students || []).map(s => [normalizeStudentId(s.student_id), s]));
+    if (!targetState.submissions || typeof targetState.submissions !== 'object') {
+        targetState.submissions = {};
+    }
+
+    q.forEach(pkg => {
+        const exKey = pkg.activeExam;
+        const grpName = pkg.groupName;
+        if (pkg.scoresByStudentId && typeof pkg.scoresByStudentId === 'object') {
+            Object.entries(pkg.scoresByStudentId).forEach(([sid, sc]) => {
+                const st = stById.get(normalizeStudentId(sid));
+                if (st) {
+                    if (!st.scores || typeof st.scores !== 'object') st.scores = {};
+                    if (exKey && sc.exam !== undefined) st.scores[exKey] = sc.exam;
+                    if (sc.ahkam !== undefined) st.scores.ahkam = sc.ahkam;
+                }
+            });
+        }
+        if (exKey && grpName && pkg.submissionMeta) {
+            targetState.submissions[`${exKey}_${grpName}`] = pkg.submissionMeta;
+        }
+    });
+    return true;
+}
+
+// قراءة الحالة السحابية مع دمج أي درجات محلية معلقة لم تتزامن بعد
 async function loadState(forceRefresh = false) {
     const now = Date.now();
     if (!forceRefresh && lastCloudSyncAt > 0 && (now - lastCloudSyncAt) < 2500) {
+        mergePendingGradesOntoState(APP_STATE);
         rebuildStudentIndexes();
         return APP_STATE;
     }
 
-    if (useCloud && db) {
-        const cfgSnap = await db.collection('system_config').doc('schema_v2').get().catch(() => null);
-        if (cfgSnap && cfgSnap.exists && cfgSnap.data()?.split_enabled) {
-            useSplitCollections = true;
-            const [sysSnap, grpSnaps, stSnaps, subSnaps] = await Promise.all([
-                db.collection('system_config').doc('global').get(),
-                db.collection('groups').get(),
-                db.collection('students').get(),
-                db.collection('submissions').get()
-            ]);
+    if (useCloud && db && navigator.onLine !== false) {
+        try {
+            const cfgSnap = await db.collection('system_config').doc('schema_v2').get().catch(() => null);
+            if (cfgSnap && cfgSnap.exists && cfgSnap.data()?.split_enabled) {
+                useSplitCollections = true;
+                const [sysSnap, grpSnaps, stSnaps, subSnaps] = await Promise.all([
+                    db.collection('system_config').doc('global').get(),
+                    db.collection('groups').get(),
+                    db.collection('students').get(),
+                    db.collection('submissions').get()
+                ]);
 
-            const nextState = normalizeStateShape({ ...APP_STATE });
-            if (sysSnap.exists) {
-                const sd = sysSnap.data() || {};
-                if (sd.settings) nextState.settings = sd.settings;
-                if (Array.isArray(sd.exams) && sd.exams.length) nextState.exams = sd.exams;
-                if (Array.isArray(sd.users) && sd.users.length) nextState.users = sd.users;
-                if (Array.isArray(sd.gift_templates)) nextState.gift_templates = sd.gift_templates;
-                if (sd.gift_logos) nextState.gift_logos = sd.gift_logos;
-            }
-            const nextGroups = {};
-            grpSnaps.forEach(d => {
-                const gd = d.data() || {};
-                if (gd.name) {
-                    nextGroups[gd.name] = {
-                        group_num: gd.group_num || '',
-                        teacher: gd.teacher || '',
-                        has_ahkam: Boolean(gd.has_ahkam)
-                    };
+                const nextState = normalizeStateShape({ ...APP_STATE });
+                if (sysSnap.exists) {
+                    const sd = sysSnap.data() || {};
+                    if (sd.settings) nextState.settings = sd.settings;
+                    if (Array.isArray(sd.exams) && sd.exams.length) nextState.exams = sd.exams;
+                    if (Array.isArray(sd.users) && sd.users.length) nextState.users = sd.users;
+                    if (Array.isArray(sd.gift_templates)) nextState.gift_templates = sd.gift_templates;
+                    if (sd.gift_logos) nextState.gift_logos = sd.gift_logos;
                 }
-            });
-            if (Object.keys(nextGroups).length) nextState.groups_meta = nextGroups;
+                const nextGroups = {};
+                grpSnaps.forEach(d => {
+                    const gd = d.data() || {};
+                    if (gd.name) {
+                        nextGroups[gd.name] = {
+                            group_num: gd.group_num || '',
+                            teacher: gd.teacher || '',
+                            has_ahkam: Boolean(gd.has_ahkam)
+                        };
+                    }
+                });
+                if (Object.keys(nextGroups).length) nextState.groups_meta = nextGroups;
 
-            const nextStudents = [];
-            stSnaps.forEach(d => nextStudents.push(d.data()));
-            nextState.students = nextStudents;
+                const nextStudents = [];
+                stSnaps.forEach(d => nextStudents.push(d.data()));
+                nextState.students = nextStudents;
 
-            const nextSubs = {};
-            subSnaps.forEach(d => {
-                const subData = d.data() || {};
-                const subKey = subData.submission_key || d.id;
-                nextSubs[subKey] = {
-                    status: subData.status || 'draft',
-                    note: subData.note || '',
-                    updated_at: subData.updated_at || '',
-                    decided_by: subData.decided_by || ''
-                };
-            });
-            nextState.submissions = nextSubs;
+                const nextSubs = {};
+                subSnaps.forEach(d => {
+                    const subData = d.data() || {};
+                    const subKey = subData.submission_key || d.id;
+                    nextSubs[subKey] = {
+                        status: subData.status || 'draft',
+                        note: subData.note || '',
+                        updated_at: subData.updated_at || '',
+                        decided_by: subData.decided_by || ''
+                    };
+                });
+                nextState.submissions = nextSubs;
 
-            APP_STATE = normalizeStateShape(nextState);
-            lastCloudSyncAt = Date.now();
-            try { localStorage.setItem('quran_grades_state', JSON.stringify(APP_STATE)); } catch (e) {}
-            rebuildStudentIndexes();
-            return APP_STATE;
-        }
+                APP_STATE = normalizeStateShape(nextState);
+                mergePendingGradesOntoState(APP_STATE);
+                lastCloudSyncAt = Date.now();
+                try { localStorage.setItem('quran_grades_state', JSON.stringify(APP_STATE)); } catch (e) {}
+                rebuildStudentIndexes();
+                return APP_STATE;
+            }
 
-        const doc = await db.collection('quran_system').doc('main_state').get();
-        if (doc.exists) {
-            APP_STATE = normalizeStateShape(doc.data());
-            lastCloudSyncAt = Date.now();
-            try { localStorage.setItem('quran_grades_state', JSON.stringify(APP_STATE)); } catch (e) {}
-        } else {
-            await saveState();
+            const doc = await db.collection('quran_system').doc('main_state').get();
+            if (doc.exists) {
+                APP_STATE = normalizeStateShape(doc.data());
+                mergePendingGradesOntoState(APP_STATE);
+                lastCloudSyncAt = Date.now();
+                try { localStorage.setItem('quran_grades_state', JSON.stringify(APP_STATE)); } catch (e) {}
+            } else {
+                await saveState();
+            }
+        } catch (cloudErr) {
+            const localData = localStorage.getItem('quran_grades_state');
+            if (localData) {
+                APP_STATE = normalizeStateShape(JSON.parse(localData));
+            }
+            mergePendingGradesOntoState(APP_STATE);
         }
     } else {
         const localData = localStorage.getItem('quran_grades_state');
         if (localData) {
             APP_STATE = normalizeStateShape(JSON.parse(localData));
         }
+        mergePendingGradesOntoState(APP_STATE);
     }
     rebuildStudentIndexes();
     return APP_STATE;
 }
 
-// حفظ الحالة بكفاءة: إذا كانت المجموعات المقسّمة مفعّلة يستخدم WriteBatch للمستندات المتغيرة فقط
+// حفظ الحالة محلياً دائماً، ومزامنتها سحابياً عند توفر الاتصال وعدم استثنائها
 async function saveState(options = {}) {
     rebuildStudentIndexes();
     try {
         localStorage.setItem('quran_grades_state', JSON.stringify(APP_STATE));
     } catch (e) {
         console.warn('Local cache quota warning:', e);
+    }
+
+    if (options.localOnly || navigator.onLine === false) {
+        return { synced: false, offline: true };
     }
 
     if (useCloud && db) {
@@ -1366,18 +1488,77 @@ async function saveState(options = {}) {
             }
             await batch.commit();
             lastCloudSyncAt = Date.now();
-            return;
+            return { synced: true };
         }
 
-        const payload = { ...APP_STATE };
-        const approxBytes = new Blob([JSON.stringify(payload)]).size;
-        if (approxBytes > 920000) {
-            throw new Error('حجم بيانات الحالة اقترب من حد 1MB في Firestore (يرجى تقليص الصور/الشعارات أو أرشفة السجلات القديمة).');
+        const cleanPayload = JSON.parse(JSON.stringify(APP_STATE, (_k, v) => (v === undefined ? null : v)));
+        const MAX_SAFE_BYTES = 900000;
+        let approxBytes = new Blob([JSON.stringify(cleanPayload)]).size;
+
+        if (approxBytes > MAX_SAFE_BYTES && Array.isArray(cleanPayload.grade_logs)) {
+            cleanPayload.grade_logs = cleanPayload.grade_logs.slice(0, 50);
+            approxBytes = new Blob([JSON.stringify(cleanPayload)]).size;
         }
-        await db.collection('quran_system').doc('main_state').set(payload);
+        if (approxBytes > MAX_SAFE_BYTES && Array.isArray(cleanPayload.login_activity)) {
+            cleanPayload.login_activity = cleanPayload.login_activity.slice(0, 60);
+            approxBytes = new Blob([JSON.stringify(cleanPayload)]).size;
+        }
+        if (approxBytes > MAX_SAFE_BYTES && Array.isArray(cleanPayload.transfer_logs)) {
+            cleanPayload.transfer_logs = cleanPayload.transfer_logs.slice(0, 60);
+            approxBytes = new Blob([JSON.stringify(cleanPayload)]).size;
+        }
+        if (approxBytes > 1000000) {
+            throw new Error('حجم بيانات المستند تجاوز الحد المسموح في Firestore (1MB). يرجى إزالة الصور/الشعارات الكبيرة.');
+        }
+
+        APP_STATE = normalizeStateShape(cleanPayload);
+        await db.collection('quran_system').doc('main_state').set(cleanPayload);
         lastCloudSyncAt = Date.now();
+        return { synced: true };
+    }
+    return { synced: false, localDemo: true };
+}
+
+// مزامنة الدرجات المحفوظة محلياً تلقائياً فور عودة الإنترنت أو استجابة السحابة
+async function flushPendingOfflineSync(showFeedback = false) {
+    if (isFlushingOfflineQueue) return;
+    const q = getPendingGradeQueue();
+    updatePendingSyncBadgeUI();
+    if (!q.length) {
+        if (showFeedback) showToast('لا توجد درجات معلقة للمزامنة', 'info');
+        return;
+    }
+    if (!useCloud || !db || navigator.onLine === false) {
+        if (showFeedback) showToast('الدرجات محفوظة محلياً وستُرفع تلقائياً عند عودة الاتصال', 'warning');
+        return;
+    }
+
+    isFlushingOfflineQueue = true;
+    try {
+        await loadState(true);
+        mergePendingGradesOntoState(APP_STATE);
+        await saveState({ syncSplit: true });
+        setPendingGradeQueue([]);
+        if (currentUser && !document.getElementById('viewTeacher').classList.contains('hidden')) {
+            onTeacherGroupChanged();
+        }
+        if (currentUser && !document.getElementById('viewAdmin').classList.contains('hidden')) {
+            renderAdminGroups();
+            renderAdminReports();
+        }
+        showToast('تمت مزامنة الدرجات المحفوظة محلياً مع السحابة بنجاح ✔', 'success');
+    } catch (err) {
+        if (showFeedback) {
+            showToast('تعذرت المزامنة الآن — الدرجات آمنة ومحفوظة محلياً', 'warning');
+        }
+    } finally {
+        isFlushingOfflineQueue = false;
     }
 }
+
+window.addEventListener('online', () => {
+    flushPendingOfflineSync(false);
+});
 
 // ==================== 2. تسجيل الدخول ====================
 async function handleLogin(isAuto = false) {
@@ -3598,6 +3779,153 @@ ${duplicateSt.name} — مجموعة (${duplicateSt.group})
     }
 }
 
+// ==================== تعديل اسم طالب أو حذفه من مجموعة ====================
+function openEditDeleteStudentModal() {
+    if (!canCurrentUserTransferStudents()) {
+        alert('عذراً، صلاحية تعديل أو حذف الطلاب متاحة للمراجعين والأدمن فقط!');
+        return;
+    }
+    document.getElementById('edStSearchInp').value = '';
+    filterEditDeleteStudentsList();
+    const modal = document.getElementById('editDeleteStudentModal');
+    modal.classList.remove('hidden');
+}
+
+function closeEditDeleteStudentModal() {
+    document.getElementById('editDeleteStudentModal').classList.add('hidden');
+}
+
+function filterEditDeleteStudentsList() {
+    const q = (document.getElementById('edStSearchInp')?.value || '').trim();
+    const sel = document.getElementById('edStSelect');
+    if (!sel) return;
+    const filtered = (APP_STATE.students || []).filter(s =>
+        !q || String(s.name).includes(q) || String(s.student_id).includes(q) || String(s.group).includes(q)
+    );
+    sel.innerHTML = filtered.map(s =>
+        `<option value="${escapeAttr(s.student_id)}">${escapeHtml(s.name)} — [كود: ${escapeHtml(s.student_id)}] (${escapeHtml(s.group)})</option>`
+    ).join('');
+    onEditDeleteStudentSelected();
+}
+
+function onEditDeleteStudentSelected() {
+    const sid = document.getElementById('edStSelect')?.value;
+    const st = findStudentById(sid);
+    const infoEl = document.getElementById('edStCurrentInfo');
+    const nameInp = document.getElementById('edStNewNameInp');
+    if (!st) {
+        if (infoEl) infoEl.textContent = 'لا يوجد طالب مطابق للبحث.';
+        if (nameInp) nameInp.value = '';
+        return;
+    }
+    if (infoEl) {
+        infoEl.innerHTML = `الدارس: <b>${escapeHtml(st.name)}</b> (كود: ${escapeHtml(st.student_id)}) — المجموعة: <b>${escapeHtml(st.group)}</b>`;
+    }
+    if (nameInp) nameInp.value = st.name || '';
+}
+
+async function executeRenameStudent() {
+    if (!canCurrentUserTransferStudents()) {
+        alert('عذراً، صلاحية تعديل الطلاب متاحة للمراجعين والأدمن فقط!');
+        return;
+    }
+    const sid = document.getElementById('edStSelect')?.value;
+    const newName = (document.getElementById('edStNewNameInp')?.value || '').trim();
+    const st = findStudentById(sid);
+    if (!st) {
+        alert('يرجى اختيار الطالب أولاً!');
+        return;
+    }
+    if (!newName) {
+        alert('يرجى كتابة الاسم الجديد للطالب!');
+        return;
+    }
+    const oldName = st.name;
+    if (oldName === newName) {
+        showToast('لم يتغير اسم الطالب', 'info');
+        return;
+    }
+
+    st.name = newName;
+    if (!Array.isArray(APP_STATE.transfer_logs)) APP_STATE.transfer_logs = [];
+    APP_STATE.transfer_logs.unshift({
+        timestamp: new Date().toLocaleString('ar-EG'),
+        student_id: st.student_id,
+        student_name: newName,
+        from_group: st.group,
+        to_group: st.group,
+        by_user: currentUser ? currentUser.name : 'الإدارة',
+        reason: `تعديل الاسم من (${oldName}) إلى (${newName})`
+    });
+
+    try {
+        await saveState({ syncSplit: true, changedStudentIds: [st.student_id] });
+        filterEditDeleteStudentsList();
+        if (!document.getElementById('viewAdmin').classList.contains('hidden')) {
+            renderAdminGroups();
+            renderAdminReports();
+        }
+        if (!document.getElementById('viewReviewer').classList.contains('hidden')) {
+            renderReviewerGroups();
+        }
+        showToast(`تم تعديل اسم الطالب إلى (${newName}) ✔`, 'success');
+    } catch (err) {
+        await saveState({ localOnly: true });
+        showToast('تم تعديل الاسم محلياً وسيُزامن عند توفر الاتصال', 'warning');
+    }
+}
+
+async function executeDeleteStudentFromGroup() {
+    if (!canCurrentUserTransferStudents()) {
+        alert('عذراً، صلاحية حذف الطلاب متاحة للمراجعين والأدمن فقط!');
+        return;
+    }
+    const sid = document.getElementById('edStSelect')?.value;
+    const st = findStudentById(sid);
+    if (!st) {
+        alert('يرجى اختيار الطالب أولاً!');
+        return;
+    }
+
+    if (!confirm(`هل أنت متأكد من حذف الطالب (${st.name}) [كود: ${st.student_id}] من مجموعة (${st.group})؟`)) {
+        return;
+    }
+
+    const idx = (APP_STATE.students || []).findIndex(x => normalizeStudentId(x.student_id) === normalizeStudentId(st.student_id));
+    if (idx === -1) return;
+
+    const deletedGroup = st.group;
+    const deletedName = st.name;
+    APP_STATE.students.splice(idx, 1);
+
+    if (!Array.isArray(APP_STATE.transfer_logs)) APP_STATE.transfer_logs = [];
+    APP_STATE.transfer_logs.unshift({
+        timestamp: new Date().toLocaleString('ar-EG'),
+        student_id: st.student_id,
+        student_name: deletedName,
+        from_group: deletedGroup,
+        to_group: 'محذوف من المجموعة 🗑',
+        by_user: currentUser ? currentUser.name : 'الإدارة',
+        reason: `حذف الدارس من مجموعة (${deletedGroup})`
+    });
+
+    try {
+        await saveState({ syncSplit: true });
+        filterEditDeleteStudentsList();
+        if (!document.getElementById('viewAdmin').classList.contains('hidden')) {
+            renderAdminGroups();
+            renderAdminReports();
+        }
+        if (!document.getElementById('viewReviewer').classList.contains('hidden')) {
+            renderReviewerGroups();
+        }
+        showToast(`تم حذف (${deletedName}) من مجموعة (${deletedGroup}) ✔`, 'success');
+    } catch (err) {
+        await saveState({ localOnly: true });
+        showToast('تم الحذف محلياً وسيُزامن عند توفر الاتصال', 'warning');
+    }
+}
+
 // ==================== 4. استيراد وتصدير الإكسيل ====================
 function importExcelFile() {
     const fileInput = document.getElementById('excelFileInput');
@@ -3892,12 +4220,15 @@ async function saveTeacherGrades(isSubmit) {
     const examLbl = getExamLabel(activeExam);
     const tchBatchChanges = [];
     const changedIds = [];
+    const scoresSnapshot = {};
 
     document.querySelectorAll('.tch-exam-inp').forEach(inp => {
         const st = findStudentById(inp.dataset.sid);
         if (st) {
             const oldVal = String(st.scores[activeExam] ?? '').trim();
             const newVal = inp.value.trim();
+            if (!scoresSnapshot[st.student_id]) scoresSnapshot[st.student_id] = {};
+            scoresSnapshot[st.student_id].exam = newVal;
             if (oldVal !== newVal) {
                 changedIds.push(st.student_id);
                 tchBatchChanges.push({
@@ -3917,6 +4248,8 @@ async function saveTeacherGrades(isSubmit) {
         if (st) {
             const oldVal = String(st.scores.ahkam ?? '').trim();
             const newVal = inp.value.trim();
+            if (!scoresSnapshot[st.student_id]) scoresSnapshot[st.student_id] = {};
+            scoresSnapshot[st.student_id].ahkam = newVal;
             if (oldVal !== newVal) {
                 if (!changedIds.includes(st.student_id)) changedIds.push(st.student_id);
                 tchBatchChanges.push({
@@ -3940,12 +4273,37 @@ async function saveTeacherGrades(isSubmit) {
     sub.status = isSubmit ? 'submitted' : 'draft';
     sub.updated_at = new Date().toLocaleString('ar-EG');
 
+    // حفظ محلي فوري وضمان عدم ضياع الدرجات مطلقاً
+    enqueuePendingGradeSave({
+        groupName,
+        activeExam,
+        scoresByStudentId: scoresSnapshot,
+        submissionMeta: { ...sub }
+    });
+    await saveState({ localOnly: true });
+
     try {
-        await saveState({ syncSplit: true, changedStudentIds: changedIds, changedSubmissionKeys: [subKey] });
+        if (!useCloud || !db || navigator.onLine === false) {
+            onTeacherGroupChanged();
+            showToast(
+                isSubmit
+                    ? 'تم حفظ الإرسال محلياً وسيُرفع تلقائياً عند توفر الإنترنت'
+                    : 'تم حفظ الدرجات محلياً بانتظار المزامنة',
+                'warning'
+            );
+            return;
+        }
+
+        const res = await saveState({ syncSplit: true, changedStudentIds: changedIds, changedSubmissionKeys: [subKey] });
+        if (res && res.synced) {
+            const qAfter = getPendingGradeQueue().filter(x => !(x.groupName === groupName && x.activeExam === activeExam));
+            setPendingGradeQueue(qAfter);
+        }
         onTeacherGroupChanged();
-        showToast(isSubmit ? 'تم إرسال الدرجات للمراجع بنجاح' : 'تم حفظ المسودة بنجاح', 'success');
+        showToast(isSubmit ? 'تم إرسال الدرجات واعتمادها سحابياً ✔' : 'تم حفظ الدرجات ومزامنتها ✔', 'success');
     } catch (err) {
-        alert('تعذر حفظ الدرجات: ' + err.message);
+        onTeacherGroupChanged();
+        showToast('تعذرت المزامنة الآن؛ الدرجات محفوظة محلياً ولن تُحذف', 'warning');
     }
 }
 
