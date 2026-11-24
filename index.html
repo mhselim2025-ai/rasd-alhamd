@@ -4123,8 +4123,7 @@ async function reviewerReturn(groupName, noteInputId) {
         const meta = APP_STATE.groups_meta[groupName];
         const teacherUser = APP_STATE.users.find(u => u.name === meta.teacher && u.role === 'teacher');
         if (teacherUser && teacherUser.phone) {
-            if (confirm('تمت إعادة المجموعة للمعلم بنجاح.
-هل تود إرسال تنبيه بالملاحظة إلى المعلم عبر واتساب الآن؟')) {
+            if (confirm('تمت إعادة المجموعة للمعلم بنجاح.\nهل تود إرسال تنبيه بالملاحظة إلى المعلم عبر واتساب الآن؟')) {
                 const msg = `السلام عليكم الشيخ/ ${teacherUser.name}
 تمت مراجعة درجات مجموعة (${groupName}) في اختبار (${getExamLabel(activeExam)})، ويوجد ملاحظة للتعديل:
 "${note}"
@@ -4183,8 +4182,7 @@ function downloadCloudReadyHtml() {
             /const EMBEDDED_FIREBASE_CONFIG = \{[\s\S]*?\};/,
             `const EMBEDDED_FIREBASE_CONFIG = ${raw};`
         );
-        const blob = new Blob(['<!DOCTYPE html>
-' + updatedHtml], { type: 'text/html;charset=utf-8' });
+        const blob = new Blob(['<!DOCTYPE html>\n' + updatedHtml], { type: 'text/html;charset=utf-8' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
         link.download = 'index.html';
@@ -4240,8 +4238,7 @@ function isMainAdminUser() {
 function getSelectedGiftRecipients() {
     const checkedNames = Array.from(document.querySelectorAll('.gift-st-chk:checked')).map(c => c.value.trim()).filter(Boolean);
     const manualRaw = document.getElementById('giftManualNamesInp') ? document.getElementById('giftManualNamesInp').value : '';
-    const manualNames = manualRaw.split(/?
-/).map(s => s.trim()).filter(Boolean);
+    const manualNames = manualRaw.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
     const combined = [...checkedNames, ...manualNames];
     return combined.length ? combined : ['اسم الدارس المكرّم'];
 }
@@ -4935,13 +4932,11 @@ ${reasonText}`;
     link.click();
 
     if (platform === 'whatsapp') {
-        alert('تم تنزيل صورة الشهادة على جهازك ✔
-سيتم فتح واتساب الآن لإرسالها في المحادثة أو رفعها كـ «حالة».');
+        alert('تم تنزيل صورة الشهادة على جهازك ✔\nسيتم فتح واتساب الآن لإرسالها في المحادثة أو رفعها كـ «حالة».');
         const targetUrl = safeExternalUrl(`https://wa.me/?text=${encodeURIComponent(shareText)}`);
         if (targetUrl) window.open(targetUrl, '_blank', 'noopener,noreferrer');
     } else {
-        alert('تم تنزيل صورة الشهادة على جهازك ✔
-سيتم فتح فيسبوك الآن لنشر الصورة وتهنئة الدارس.');
+        alert('تم تنزيل صورة الشهادة على جهازك ✔\nسيتم فتح فيسبوك الآن لنشر الصورة وتهنئة الدارس.');
         const fbUrl = safeExternalUrl('https://www.facebook.com/');
         if (fbUrl) window.open(fbUrl, '_blank', 'noopener,noreferrer');
     }
