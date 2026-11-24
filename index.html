@@ -166,6 +166,8 @@
 </head>
 <body>
 
+<div id="toastBanner" style="position:fixed; bottom:18px; left:18px; z-index:2000; max-width:380px; background:#0f172a; color:#f8fafc; padding:11px 16px; border-radius:10px; box-shadow:0 10px 25px rgba(0,0,0,0.25); font-size:12.5px; font-weight:bold; display:none; border-right:4px solid #22c55e; line-height:1.5;"></div>
+
 <div class="topbar">
     <div>
         <h1>منظومة رصد واعتماد الدرجات الإلكترونية</h1>
@@ -329,6 +331,36 @@
                 </div>
             </div>
 
+
+            <!-- لوحة التحليلات الإحصائية وجودة البيانات للاختبار المحدد -->
+            <div id="statisticalAnalyticsCard" style="background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:12px; padding:12px 14px; margin-bottom:16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+                    <b style="color:#1f4e78; font-size:13.5px;">📈 المؤشرات الإحصائية وجودة الدرجات (للاختبار المحدد):</b>
+                    <div style="display:flex; align-items:center; gap:6px; font-size:12px;">
+                        <label for="examMaxScoreInp" style="font-weight:bold; color:#334155;">النهاية العظمى:</label>
+                        <input type="number" id="examMaxScoreInp" min="1" max="1000" step="1" class="input-field" style="width:78px; padding:4px 8px; text-align:center; font-weight:bold; background:#fff;" onchange="updateExamMaxScore(this.value)">
+                        <span id="statCompletionBadge" class="badge badge-draft">نسبة الرصد: 0%</span>
+                    </div>
+                </div>
+                <div id="statsMetricsGrid" class="grid-3" style="margin-bottom:10px;"></div>
+                <div style="overflow-x:auto; max-height:220px; overflow-y:auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>المجموعة</th>
+                                <th>المرصود</th>
+                                <th>المفقود</th>
+                                <th>المتوسط</th>
+                                <th>الوسيط</th>
+                                <th>الأدنى / الأعلى</th>
+                                <th>نسبة النجاح (≥50%)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="statsGroupsTable"></tbody>
+                    </table>
+                </div>
+            </div>
+
             <hr style="border:0; border-top:1px solid #e2e8f0; margin:16px 0;">
 
             <!-- سجل تعديلات الدرجات (مجمّع لكل عملية حفظ لتخفيف الضغط على قاعدة البيانات) -->
@@ -487,7 +519,13 @@
         <!-- تبويب 4: الربط السحابي Firebase -->
         <div id="tabCloud" class="card hidden">
             <h3 style="margin-top:0; color:#1f4e78;">الربط السحابي المجاني (Firebase Firestore)</h3>
-            <div class="alert-box alert-warning">
+            
+            <div class="alert-box alert-info" style="margin-bottom:12px;">
+                <b>🔒 معمارية الأمان وحماية الموارد (المرحلة الانتقالية / الإنتاجية):</b><br>
+                • يدعم النظام الآن <b>التخزين المقسّم (`split_v2`)</b> في Firestore (فصل الإعدادات عن الطلاب والدرجات والتقديمات والسجلات) مع الحفاظ التام على التوافق مع <code>main_state</code>.<br>
+                • يُنصح بتطبيق قواعد Firestore المقترحة وإدارة الصلاحيات عبر Firebase Auth / Cloud Functions للإنتاج الفعلي مع 1,000–3,000 طالب.
+            </div>
+<div class="alert-box alert-warning">
                 <b>لماذا هذه الخطوة مهمة جداً؟</b><br>
                 لكي يفتح كل معلم ومراجع الرابط من هاتفه الشخصي وتصل إليك الدرجات فوراً:<br>
                 1. الصق كود <code>firebaseConfig</code> في المربع أدناه واضغط <b>«حفظ وتفعيل الربط السحابي»</b>.<br>
@@ -499,6 +537,16 @@
                 <button class="btn btn-success" onclick="downloadCloudReadyHtml()">٢. تحميل ملف الموقع المدمج بالربط (index.html)</button>
                 <button class="btn btn-light" onclick="clearFirebaseConfig()">العودة للوضع المحلي</button>
             </div>
+
+            <hr style="border:0; border-top:1px solid #e2e8f0; margin:18px 0;">
+            <div>
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
+                    <label style="font-weight:bold; color:#1f4e78;">٣. مسودة قواعد أمان Firestore (Security Rules) الموصى بها للإنتاج:</label>
+                    <button type="button" class="btn btn-light btn-sm" onclick="copyRecommendedFirestoreRules()">📋 نسخ القواعد</button>
+                </div>
+                <textarea id="recommendedRulesBox" rows="10" readonly class="textarea-field" style="direction:ltr; text-align:left; font-family:monospace; font-size:11.5px; background:#0f172a; color:#e2e8f0;"></textarea>
+            </div>
+
         </div>
     </div>
 
@@ -853,6 +901,14 @@
                     </div>
                 </div>
 
+
+                <div id="giftBatchProgressWrap" class="hidden" style="background:#eff6ff; border:1px solid #93c5fd; border-radius:8px; padding:7px 10px; font-size:11.5px; color:#1e40af; font-weight:bold;">
+                    <div id="giftBatchProgressText">جاري تجهيز الشهادات...</div>
+                    <div style="background:#dbeafe; height:7px; border-radius:6px; overflow:hidden; margin-top:4px;">
+                        <div id="giftBatchProgressBar" style="height:100%; width:0%; background:#1f4e78; transition:width 0.15s;"></div>
+                    </div>
+                </div>
+
                 <!-- أزرار الحفظ والطباعة والمشاركة -->
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:2px;">
                     <button type="button" class="btn btn-danger" onclick="downloadGiftPDF()">📄 حفظ PDF (للجميع دفعة واحدة)</button>
@@ -893,14 +949,148 @@ const EMBEDDED_FIREBASE_CONFIG = {
   "measurementId": "G-BR0P4WFYXR"
 };
 
+const RECOMMENDED_FIRESTORE_RULES = `rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function userRole() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+        : '';
+    }
+    function isAdmin() {
+      return userRole() == 'admin';
+    }
+    function isReviewer() {
+      return userRole() == 'reviewer' || isAdmin();
+    }
+    function isTeacher() {
+      return userRole() == 'teacher' || isReviewer();
+    }
+
+    match /users/{uid} {
+      allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+      allow write: if isAdmin();
+    }
+    match /groups/{groupId} {
+      allow read: if isTeacher();
+      allow write: if isAdmin();
+    }
+    match /students/{studentId} {
+      allow read: if isTeacher();
+      allow create, delete: if isReviewer();
+      allow update: if isTeacher();
+    }
+    match /exams/{examId} {
+      allow read: if isTeacher();
+      allow write: if isAdmin();
+    }
+    match /submissions/{subId} {
+      allow read: if isTeacher();
+      allow write: if isTeacher();
+    }
+    match /audit_logs/{logId} {
+      allow read: if isReviewer();
+      allow create: if isTeacher();
+      allow update, delete: if false;
+    }
+    match /login_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
+    match /certificate_templates/{templateId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    match /system_config/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    match /quran_system/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+  }
+}`;
+
 let db = null;
 let useCloud = false;
+let useSplitCollections = false;
+
+// فهارس الذاكرة لتسريع البحث وعدم التهنيج (O(1) بدلاً من المسح الخطي المتكرر)
+let STUDENT_BY_ID = new Map();
+let STUDENTS_BY_GROUP = new Map();
+
+// حماية ضد محاولات الدخول المتكررة العشوائية (Rate Limiting / Lockout)
+const LOGIN_GUARD = {
+    maxAttempts: 6,
+    lockoutMs: 60000,
+    attempts: 0,
+    lockedUntil: 0
+};
+
+// إشعار غير معطّل للواجهة (Toast)
+let toastTimer = null;
+function showToast(msg, type = 'success') {
+    const el = document.getElementById('toastBanner');
+    if (!el) return;
+    const colors = {
+        success: '#22c55e',
+        warning: '#f59e0b',
+        error: '#ef4444',
+        info: '#38bdf8'
+    };
+    el.style.borderRightColor = colors[type] || colors.success;
+    el.textContent = String(msg || '');
+    el.style.display = 'block';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+        el.style.display = 'none';
+    }, 3400);
+}
+
+// تعقيم النصوص لمنع حقن HTML/XSS
+function escapeHtml(val) {
+    return String(val ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function escapeAttr(val) {
+    return escapeHtml(val).replace(/`/g, '&#96;');
+}
+
+// التحقق من سلامة الروابط الخارجية قبل فتحها
+function safeExternalUrl(urlStr) {
+    try {
+        const parsed = new URL(String(urlStr || ''));
+        if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+            return parsed.toString();
+        }
+        return null;
+    } catch (e) {
+        return null;
+    }
+}
+
+// تحويل اسم المجموعة إلى معرّف آمن ومستقر للمستندات
+function toDocSlug(raw) {
+    const base = String(raw ?? '').trim().toLowerCase().replace(/[^a-z0-9؀-ۿ]+/g, '_').replace(/^_+|_+$/g, '');
+    return base || ('item_' + Math.random().toString(36).slice(2, 8));
+}
 
 // الحالة الافتراضية
 let APP_STATE = {
     settings: {
         active_exam: 'exam_1',
-        school_name: 'مدرسة الحمد للقرآن الكريم بالجزائر'
+        school_name: 'مدرسة الحمد للقرآن الكريم بالجزائر',
+        exam_max_scores: {}
     },
     exams: [
         { key: 'exam_1', label: 'الدوري الأول (عمود K)' },
@@ -928,6 +1118,46 @@ let APP_STATE = {
 
 let currentUser = null;
 let adminEditingGroup = null;
+let lastCloudSyncAt = 0;
+
+function normalizeStudentId(raw) {
+    return String(raw ?? '').trim().toUpperCase();
+}
+
+function rebuildStudentIndexes() {
+    STUDENT_BY_ID = new Map();
+    STUDENTS_BY_GROUP = new Map();
+    const list = Array.isArray(APP_STATE.students) ? APP_STATE.students : [];
+    for (let i = 0; i < list.length; i++) {
+        const s = list[i];
+        if (!s) continue;
+        const normId = normalizeStudentId(s.student_id);
+        if (normId && !STUDENT_BY_ID.has(normId)) {
+            STUDENT_BY_ID.set(normId, s);
+        }
+        const grp = String(s.group || '');
+        if (!STUDENTS_BY_GROUP.has(grp)) {
+            STUDENTS_BY_GROUP.set(grp, []);
+        }
+        STUDENTS_BY_GROUP.get(grp).push(s);
+    }
+}
+
+function getStudentsInGroup(groupName) {
+    if (!STUDENTS_BY_GROUP.size && Array.isArray(APP_STATE.students) && APP_STATE.students.length) {
+        rebuildStudentIndexes();
+    }
+    return STUDENTS_BY_GROUP.get(String(groupName || '')) || [];
+}
+
+function findStudentById(sid) {
+    const target = normalizeStudentId(sid);
+    if (!target) return null;
+    if (!STUDENT_BY_ID.size && Array.isArray(APP_STATE.students) && APP_STATE.students.length) {
+        rebuildStudentIndexes();
+    }
+    return STUDENT_BY_ID.get(target) || null;
+}
 
 function getExamLabel(examKey) {
     if (!examKey || examKey === 'none') return 'مغلق حالياً';
@@ -935,74 +1165,241 @@ function getExamLabel(examKey) {
     return found ? found.label.replace(/\s*\(عمود.*\)/, '') : examKey;
 }
 
-function initStorage() {
-    const savedFb = localStorage.getItem('quran_fb_config');
-    const activeCfg = EMBEDDED_FIREBASE_CONFIG || (savedFb ? JSON.parse(savedFb) : null);
+function getExamMaxScore(examKey) {
+    const map = APP_STATE.settings?.exam_max_scores || {};
+    const val = Number(map[examKey]);
+    return (Number.isFinite(val) && val > 0) ? val : 100;
+}
 
-    if (activeCfg) {
+function parseValidScore(rawVal, maxScore = 1000) {
+    if (rawVal === null || rawVal === undefined) return null;
+    const str = String(rawVal).trim();
+    if (str === '') return null;
+    const num = Number(str);
+    if (!Number.isFinite(num) || num < 0 || num > maxScore) return null;
+    return num;
+}
+
+function normalizeStateShape(parsed) {
+    if (!parsed || typeof parsed !== 'object') return APP_STATE;
+    if (!parsed.settings || typeof parsed.settings !== 'object') parsed.settings = { ...APP_STATE.settings };
+    if (!parsed.settings.exam_max_scores) parsed.settings.exam_max_scores = {};
+    if (!Array.isArray(parsed.exams) || !parsed.exams.length) parsed.exams = APP_STATE.exams;
+    if (!Array.isArray(parsed.users)) parsed.users = APP_STATE.users;
+    if (!parsed.groups_meta || typeof parsed.groups_meta !== 'object') parsed.groups_meta = {};
+    if (!Array.isArray(parsed.students)) parsed.students = [];
+    if (!parsed.submissions || typeof parsed.submissions !== 'object') parsed.submissions = {};
+    return parsed;
+}
+
+function initStorage() {
+    const rulesBox = document.getElementById('recommendedRulesBox');
+    if (rulesBox) rulesBox.value = RECOMMENDED_FIRESTORE_RULES;
+
+    const savedFb = localStorage.getItem('quran_fb_config');
+    let parsedSavedFb = null;
+    if (savedFb) {
+        try { parsedSavedFb = JSON.parse(savedFb); } catch (e) { parsedSavedFb = null; }
+    }
+    const hasEmbedded = EMBEDDED_FIREBASE_CONFIG && EMBEDDED_FIREBASE_CONFIG.apiKey && !String(EMBEDDED_FIREBASE_CONFIG.apiKey).includes('REPLACE');
+    const activeCfg = hasEmbedded ? EMBEDDED_FIREBASE_CONFIG : parsedSavedFb;
+
+    if (activeCfg && typeof firebase !== 'undefined') {
         try {
             if (!firebase.apps.length) {
                 firebase.initializeApp(activeCfg);
             }
             db = firebase.firestore();
+            db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
             useCloud = true;
-            document.getElementById('cloudStatus').textContent = 'وضع التخزين: سحابي متصل ✔';
-            document.getElementById('cloudStatus').style.background = '#15803d';
-            document.getElementById('firebaseConfigInput').value = JSON.stringify(activeCfg, null, 2);
+            const statusEl = document.getElementById('cloudStatus');
+            if (statusEl) {
+                statusEl.textContent = 'وضع التخزين: سحابي متصل ✔';
+                statusEl.style.background = '#15803d';
+            }
+            const cfgInput = document.getElementById('firebaseConfigInput');
+            if (cfgInput) cfgInput.value = JSON.stringify(activeCfg, null, 2);
         } catch (e) {
             console.error(e);
             useCloud = false;
         }
     }
     if (!useCloud) {
-        const localData = localStorage.getItem('quran_grades_state');
-        if (localData) {
-            const parsed = JSON.parse(localData);
-            if (!parsed.exams) parsed.exams = APP_STATE.exams;
-            APP_STATE = parsed;
-        } else {
-            saveState();
+        try {
+            const localData = localStorage.getItem('quran_grades_state');
+            if (localData) {
+                APP_STATE = normalizeStateShape(JSON.parse(localData));
+            } else {
+                localStorage.setItem('quran_grades_state', JSON.stringify(APP_STATE));
+            }
+        } catch (e) {
+            console.error('Local storage init error:', e);
         }
     }
+    rebuildStudentIndexes();
 }
 
-async function loadState() {
+// قراءة الحالة السحابية (تدعم المستند المجمّع وتكتشف تلقائياً المجموعات المقسّمة إن وُجدت)
+async function loadState(forceRefresh = false) {
+    const now = Date.now();
+    if (!forceRefresh && lastCloudSyncAt > 0 && (now - lastCloudSyncAt) < 2500) {
+        rebuildStudentIndexes();
+        return APP_STATE;
+    }
+
     if (useCloud && db) {
+        const cfgSnap = await db.collection('system_config').doc('schema_v2').get().catch(() => null);
+        if (cfgSnap && cfgSnap.exists && cfgSnap.data()?.split_enabled) {
+            useSplitCollections = true;
+            const [sysSnap, grpSnaps, stSnaps, subSnaps] = await Promise.all([
+                db.collection('system_config').doc('global').get(),
+                db.collection('groups').get(),
+                db.collection('students').get(),
+                db.collection('submissions').get()
+            ]);
+
+            const nextState = normalizeStateShape({ ...APP_STATE });
+            if (sysSnap.exists) {
+                const sd = sysSnap.data() || {};
+                if (sd.settings) nextState.settings = sd.settings;
+                if (Array.isArray(sd.exams) && sd.exams.length) nextState.exams = sd.exams;
+                if (Array.isArray(sd.users) && sd.users.length) nextState.users = sd.users;
+                if (Array.isArray(sd.gift_templates)) nextState.gift_templates = sd.gift_templates;
+                if (sd.gift_logos) nextState.gift_logos = sd.gift_logos;
+            }
+            const nextGroups = {};
+            grpSnaps.forEach(d => {
+                const gd = d.data() || {};
+                if (gd.name) {
+                    nextGroups[gd.name] = {
+                        group_num: gd.group_num || '',
+                        teacher: gd.teacher || '',
+                        has_ahkam: Boolean(gd.has_ahkam)
+                    };
+                }
+            });
+            if (Object.keys(nextGroups).length) nextState.groups_meta = nextGroups;
+
+            const nextStudents = [];
+            stSnaps.forEach(d => nextStudents.push(d.data()));
+            nextState.students = nextStudents;
+
+            const nextSubs = {};
+            subSnaps.forEach(d => {
+                const subData = d.data() || {};
+                const subKey = subData.submission_key || d.id;
+                nextSubs[subKey] = {
+                    status: subData.status || 'draft',
+                    note: subData.note || '',
+                    updated_at: subData.updated_at || '',
+                    decided_by: subData.decided_by || ''
+                };
+            });
+            nextState.submissions = nextSubs;
+
+            APP_STATE = normalizeStateShape(nextState);
+            lastCloudSyncAt = Date.now();
+            try { localStorage.setItem('quran_grades_state', JSON.stringify(APP_STATE)); } catch (e) {}
+            rebuildStudentIndexes();
+            return APP_STATE;
+        }
+
         const doc = await db.collection('quran_system').doc('main_state').get();
         if (doc.exists) {
-            const data = doc.data();
-            if (!data.exams) data.exams = APP_STATE.exams;
-            APP_STATE = data;
+            APP_STATE = normalizeStateShape(doc.data());
+            lastCloudSyncAt = Date.now();
+            try { localStorage.setItem('quran_grades_state', JSON.stringify(APP_STATE)); } catch (e) {}
         } else {
             await saveState();
         }
     } else {
         const localData = localStorage.getItem('quran_grades_state');
         if (localData) {
-            const parsed = JSON.parse(localData);
-            if (!parsed.exams) parsed.exams = APP_STATE.exams;
-            APP_STATE = parsed;
+            APP_STATE = normalizeStateShape(JSON.parse(localData));
         }
     }
+    rebuildStudentIndexes();
+    return APP_STATE;
 }
 
-async function saveState() {
-    if (useCloud && db) {
-        await db.collection('quran_system').doc('main_state').set(APP_STATE);
-    } else {
+// حفظ الحالة بكفاءة: إذا كانت المجموعات المقسّمة مفعّلة يستخدم WriteBatch للمستندات المتغيرة فقط
+async function saveState(options = {}) {
+    rebuildStudentIndexes();
+    try {
         localStorage.setItem('quran_grades_state', JSON.stringify(APP_STATE));
+    } catch (e) {
+        console.warn('Local cache quota warning:', e);
+    }
+
+    if (useCloud && db) {
+        if (useSplitCollections && options.syncSplit) {
+            const batch = db.batch();
+            batch.set(db.collection('system_config').doc('global'), {
+                settings: APP_STATE.settings || {},
+                exams: APP_STATE.exams || [],
+                users: APP_STATE.users || [],
+                gift_templates: APP_STATE.gift_templates || [],
+                gift_logos: APP_STATE.gift_logos || {},
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+
+            if (Array.isArray(options.changedStudentIds) && options.changedStudentIds.length) {
+                options.changedStudentIds.forEach(sid => {
+                    const st = findStudentById(sid);
+                    if (st) {
+                        const docId = toDocSlug(st.student_id);
+                        batch.set(db.collection('students').doc(docId), st, { merge: true });
+                    }
+                });
+            }
+            if (Array.isArray(options.changedSubmissionKeys) && options.changedSubmissionKeys.length) {
+                options.changedSubmissionKeys.forEach(subKey => {
+                    const sub = APP_STATE.submissions?.[subKey];
+                    if (sub) {
+                        batch.set(db.collection('submissions').doc(toDocSlug(subKey)), {
+                            submission_key: subKey,
+                            ...sub,
+                            serverUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        }, { merge: true });
+                    }
+                });
+            }
+            await batch.commit();
+            lastCloudSyncAt = Date.now();
+            return;
+        }
+
+        const payload = { ...APP_STATE };
+        const approxBytes = new Blob([JSON.stringify(payload)]).size;
+        if (approxBytes > 920000) {
+            throw new Error('حجم بيانات الحالة اقترب من حد 1MB في Firestore (يرجى تقليص الصور/الشعارات أو أرشفة السجلات القديمة).');
+        }
+        await db.collection('quran_system').doc('main_state').set(payload);
+        lastCloudSyncAt = Date.now();
     }
 }
 
 // ==================== 2. تسجيل الدخول ====================
 async function handleLogin(isAuto = false) {
-    const code = document.getElementById('loginCodeInput').value.trim().toUpperCase();
+    const now = Date.now();
     const errEl = document.getElementById('loginError');
     const hintEl = document.getElementById('autoLoginHint');
-    errEl.classList.add('hidden');
+    if (errEl) errEl.classList.add('hidden');
+
+    if (LOGIN_GUARD.lockedUntil > now) {
+        const remSec = Math.ceil((LOGIN_GUARD.lockedUntil - now) / 1000);
+        if (!isAuto && errEl) {
+            errEl.textContent = `تم إيقاف محاولات الدخول مؤقتاً لدواعي الأمان (${remSec} ثانية).`;
+            errEl.classList.remove('hidden');
+        }
+        return;
+    }
+
+    const codeInp = document.getElementById('loginCodeInput');
+    const code = (codeInp ? codeInp.value : '').trim().toUpperCase();
 
     if (!code) {
-        if (!isAuto) {
+        if (!isAuto && errEl) {
             errEl.textContent = 'يرجى إدخال كود الدخول.';
             errEl.classList.remove('hidden');
         }
@@ -1012,27 +1409,37 @@ async function handleLogin(isAuto = false) {
     if (isAuto && hintEl) hintEl.classList.remove('hidden');
 
     try {
-        await loadState();
+        await loadState(true);
     } catch (err) {
         if (hintEl) hintEl.classList.add('hidden');
-        errEl.innerHTML = 'تعذر الاتصال بقاعدة البيانات السحابية: ' + err.message + '<br>تأكد من تفعيل Rules في Firestore (allow read, write: if true;)';
-        errEl.classList.remove('hidden');
+        if (errEl) {
+            errEl.innerHTML = 'تعذر الاتصال بقاعدة البيانات السحابية: ' + escapeHtml(err.message) + '<br>تأكد من تفعيل Rules في Firestore.';
+            errEl.classList.remove('hidden');
+        }
         return;
     }
 
     if (hintEl) hintEl.classList.add('hidden');
 
-    const user = APP_STATE.users.find(u => u.code.toUpperCase() === code);
+    const user = (APP_STATE.users || []).find(u => String(u.code || '').toUpperCase() === code);
     if (!user) {
+        LOGIN_GUARD.attempts += 1;
+        if (LOGIN_GUARD.attempts >= LOGIN_GUARD.maxAttempts) {
+            LOGIN_GUARD.lockedUntil = Date.now() + LOGIN_GUARD.lockoutMs;
+            LOGIN_GUARD.attempts = 0;
+        }
         if (isAuto) {
             localStorage.removeItem('alhamd_saved_code');
-            document.getElementById('loginCodeInput').value = '';
-        } else {
+            if (codeInp) codeInp.value = '';
+        } else if (errEl) {
             errEl.textContent = 'كود الدخول غير صحيح! يرجى التأكد من الكود أو مراجعة الإدارة.';
             errEl.classList.remove('hidden');
         }
         return;
     }
+
+    LOGIN_GUARD.attempts = 0;
+    LOGIN_GUARD.lockedUntil = 0;
 
     const rememberChk = document.getElementById('rememberMeChk');
     if (rememberChk && rememberChk.checked) {
@@ -1042,10 +1449,14 @@ async function handleLogin(isAuto = false) {
     }
 
     currentUser = user;
-    try {
-        recordDailyLoginActivity(user);
-        await saveState();
-    } catch (e) {}
+    recordDailyLoginActivity(user);
+    try { localStorage.setItem('quran_grades_state', JSON.stringify(APP_STATE)); } catch (e) {}
+    if (useCloud && db && !useSplitCollections) {
+        db.collection('quran_system').doc('main_state').update({
+            login_activity: APP_STATE.login_activity || []
+        }).catch(() => {});
+    }
+
     document.getElementById('viewLogin').classList.add('hidden');
     document.getElementById('btnLogout').classList.remove('hidden');
     document.getElementById('btnChangeMyCode').classList.remove('hidden');
@@ -1074,6 +1485,7 @@ async function handleLogin(isAuto = false) {
     } else if (canAdmin) {
         openAdminView();
     }
+    showToast(`مرحباً ${user.name}`, 'success');
 }
 
 function switchActivePortal(target) {
@@ -1106,7 +1518,7 @@ async function submitChangeMyCode() {
     const newVal = document.getElementById('newMyCodeInp').value.trim().toUpperCase();
     const confVal = document.getElementById('confirmMyCodeInp').value.trim().toUpperCase();
 
-    if (oldVal !== currentUser.code.toUpperCase()) {
+    if (oldVal !== String(currentUser.code || '').toUpperCase()) {
         alert('كود الدخول الحالي غير صحيح!');
         return;
     }
@@ -1119,23 +1531,27 @@ async function submitChangeMyCode() {
         return;
     }
 
-    await loadState();
-    const dup = APP_STATE.users.some(u => u.code.toUpperCase() === newVal && u.code.toUpperCase() !== currentUser.code.toUpperCase());
-    if (dup) {
-        alert('هذا الكود مستخدم بالفعل لشخص آخر! اختر كوداً مختلفاً.');
-        return;
-    }
-
-    const idx = APP_STATE.users.findIndex(u => u.code.toUpperCase() === currentUser.code.toUpperCase());
-    if (idx !== -1) {
-        APP_STATE.users[idx].code = newVal;
-        currentUser.code = newVal;
-        if (localStorage.getItem('alhamd_saved_code')) {
-            localStorage.setItem('alhamd_saved_code', newVal);
+    try {
+        await loadState(true);
+        const dup = APP_STATE.users.some(u => String(u.code || '').toUpperCase() === newVal && String(u.code || '').toUpperCase() !== String(currentUser.code || '').toUpperCase());
+        if (dup) {
+            alert('هذا الكود مستخدم بالفعل لشخص آخر! اختر كوداً مختلفاً.');
+            return;
         }
-        await saveState();
-        closeChangeMyCodeModal();
-        alert(`تم تغيير كود الدخول بنجاح إلى: ${newVal} ✔`);
+
+        const idx = APP_STATE.users.findIndex(u => String(u.code || '').toUpperCase() === String(currentUser.code || '').toUpperCase());
+        if (idx !== -1) {
+            APP_STATE.users[idx].code = newVal;
+            currentUser.code = newVal;
+            if (localStorage.getItem('alhamd_saved_code')) {
+                localStorage.setItem('alhamd_saved_code', newVal);
+            }
+            await saveState();
+            closeChangeMyCodeModal();
+            showToast(`تم تغيير كود الدخول إلى: ${newVal}`, 'success');
+        }
+    } catch (err) {
+        alert('تعذر حفظ الكود الجديد: ' + err.message);
     }
 }
 
@@ -1159,9 +1575,9 @@ function logout() {
 }
 
 // ==================== 3. لوحة تحكم المدير (Admin) + محرك قواعد الامتحانات ====================
-// تهيئة وترحيل قواعد الامتحانات (متوافق تماماً مع البيانات القديمة دون فقد أي حرف)
 function ensureExamRulesInitialized() {
     if (!APP_STATE.settings) APP_STATE.settings = {};
+    if (!APP_STATE.settings.exam_max_scores) APP_STATE.settings.exam_max_scores = {};
     if (!APP_STATE.settings.exam_rules) {
         APP_STATE.settings.exam_rules = {};
         const legacyActive = APP_STATE.settings.active_exam;
@@ -1186,7 +1602,6 @@ function ensureExamRulesInitialized() {
     });
 }
 
-// التحقق بدقة هل أتمت المجموعة الامتحان السابق (أي أرسلته للاعتماد أو تم اعتماده نهائياً)
 function hasGroupCompletedExam(groupName, prereqExamKey) {
     if (!prereqExamKey) return true;
     const key = `${prereqExamKey}_${groupName}`;
@@ -1194,7 +1609,6 @@ function hasGroupCompletedExam(groupName, prereqExamKey) {
     return Boolean(sub && (sub.status === 'submitted' || sub.status === 'approved'));
 }
 
-// التحقق بدقة: هل يُسمح لمجموعة معينة برصد امتحان معين الآن؟
 function isExamAllowedForGroup(examKey, groupName) {
     ensureExamRulesInitialized();
     const rule = APP_STATE.settings.exam_rules[examKey];
@@ -1253,7 +1667,6 @@ function openAdminView() {
     if (tabUsersBtn) tabUsersBtn.classList.toggle('hidden', !allowCodes);
     if (tabCloudBtn) tabCloudBtn.classList.toggle('hidden', currentUser.role !== 'admin');
 
-    // إذا كان التبويب المفتوح حالياً هو الأكواد والمستخدم غير مصرح له، نعيده لتبويب التحكم
     if (!allowCodes && !document.getElementById('tabUsers').classList.contains('hidden')) {
         const firstBtn = document.querySelector('#viewAdmin .tab-btn');
         switchAdminTab('tabControl', firstBtn);
@@ -1270,7 +1683,6 @@ function renderExamsDropdown() {
     const examsList = APP_STATE.exams || [];
     const allGroupNames = Object.keys(APP_STATE.groups_meta);
 
-    // 1. رسم بطاقات التحكم لكل امتحان (تفعيل متعدد + استثناء + اختصاص + شرط امتحان سابق)
     const rulesContainer = document.getElementById('adminExamsRulesList');
     if (rulesContainer) {
         rulesContainer.innerHTML = examsList.map(ex => {
@@ -1281,13 +1693,13 @@ function renderExamsDropdown() {
 
             const otherExamsOptions = examsList
                 .filter(other => other.key !== ex.key)
-                .map(other => `<option value="${other.key}" ${rule.prereq_exam === other.key ? 'selected' : ''}>${other.label}</option>`)
+                .map(other => `<option value="${escapeAttr(other.key)}" ${rule.prereq_exam === other.key ? 'selected' : ''}>${escapeHtml(other.label)}</option>`)
                 .join('');
 
             const checkboxesHtml = allGroupNames.map(gName => `
-                <label class="ex-rule-item_${ex.key}" data-name="${gName}" style="display:flex; align-items:center; gap:6px; padding:4px 8px; border-bottom:1px solid #f1f5f9; font-size:12px; cursor:pointer;">
-                    <input type="checkbox" class="ex-rule-chk_${ex.key}" value="${gName}" ${selectedSet.has(gName) ? 'checked' : ''} onchange="updateExamRuleGroupsSummary('${ex.key}')">
-                    <span>${gName}</span>
+                <label class="ex-rule-item_${escapeAttr(ex.key)}" data-name="${escapeAttr(gName)}" style="display:flex; align-items:center; gap:6px; padding:4px 8px; border-bottom:1px solid #f1f5f9; font-size:12px; cursor:pointer;">
+                    <input type="checkbox" class="ex-rule-chk_${escapeAttr(ex.key)}" value="${escapeAttr(gName)}" ${selectedSet.has(gName) ? 'checked' : ''} onchange="updateExamRuleGroupsSummary('${escapeAttr(ex.key)}')">
+                    <span>${escapeHtml(gName)}</span>
                 </label>
             `).join('');
 
@@ -1299,14 +1711,14 @@ function renderExamsDropdown() {
             <div style="background:${rule.enabled ? '#ffffff' : '#f8fafc'}; border:1.5px solid ${rule.enabled ? '#15803d' : '#cbd5e1'}; border-radius:10px; padding:10px 12px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
                     <label style="display:inline-flex; align-items:center; gap:8px; cursor:pointer; font-weight:bold; font-size:14px; color:${rule.enabled ? '#155e3b' : '#475569'};">
-                        <input type="checkbox" id="exEnabledChk_${ex.key}" ${rule.enabled ? 'checked' : ''} style="width:18px; height:18px; accent-color:#15803b;" onchange="onExamEnabledToggle('${ex.key}', this.checked)">
-                        <span>${ex.label}</span>
+                        <input type="checkbox" id="exEnabledChk_${escapeAttr(ex.key)}" ${rule.enabled ? 'checked' : ''} style="width:18px; height:18px; accent-color:#15803b;" onchange="onExamEnabledToggle('${escapeAttr(ex.key)}', this.checked)">
+                        <span>${escapeHtml(ex.label)}</span>
                         <span class="badge ${rule.enabled ? 'badge-approved' : 'badge-draft'}">${rule.enabled ? 'مفتوح للرصد ✔' : 'مغلق'}</span>
                     </label>
 
                     <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
                         <span style="font-size:12px; color:#475569; font-weight:bold;">نطاق المجموعات:</span>
-                        <select id="exModeSel_${ex.key}" class="select-field" style="padding:5px 8px; font-size:12px; width:240px; font-weight:bold;" onchange="onExamRuleModeChange('${ex.key}', this.value)">
+                        <select id="exModeSel_${escapeAttr(ex.key)}" class="select-field" style="padding:5px 8px; font-size:12px; width:240px; font-weight:bold;" onchange="onExamRuleModeChange('${escapeAttr(ex.key)}', this.value)">
                             <option value="ALL" ${rule.mode === 'ALL' ? 'selected' : ''}>متاح لجميع المجموعات</option>
                             <option value="EXCLUDE" ${rule.mode === 'EXCLUDE' ? 'selected' : ''}>كل المجموعات ما عدا (استثناء مجموعات)...</option>
                             <option value="INCLUDE" ${rule.mode === 'INCLUDE' ? 'selected' : ''}>اختصاص مجموعات معينة فقط...</option>
@@ -1315,29 +1727,27 @@ function renderExamsDropdown() {
                     </div>
                 </div>
 
-                <!-- اختيار الامتحان السابق المشروط -->
-                <div id="exPrereqBox_${ex.key}" style="margin-top:8px; display:${showPrereqPicker ? 'flex' : 'none'}; align-items:center; gap:8px; flex-wrap:wrap; background:#fefce8; padding:8px; border-radius:8px; border:1px solid #fde047;">
+                <div id="exPrereqBox_${escapeAttr(ex.key)}" style="margin-top:8px; display:${showPrereqPicker ? 'flex' : 'none'}; align-items:center; gap:8px; flex-wrap:wrap; background:#fefce8; padding:8px; border-radius:8px; border:1px solid #fde047;">
                     <b style="font-size:12px; color:#854d0e;">يُفتح تلقائياً للمجموعات التي أتمّت رصد:</b>
-                    <select id="exPrereqSel_${ex.key}" class="select-field" style="width:240px; padding:5px 8px; font-size:12px;" onchange="syncDomExamRulesToMemory(); renderAdminGroups();">
+                    <select id="exPrereqSel_${escapeAttr(ex.key)}" class="select-field" style="width:240px; padding:5px 8px; font-size:12px;" onchange="syncDomExamRulesToMemory(); renderAdminGroups();">
                         ${otherExamsOptions}
                     </select>
                 </div>
 
-                <!-- اختيار المجموعات (للاستثناء أو الاختصاص) -->
-                <div id="exGroupsBox_${ex.key}" style="margin-top:8px; display:${showGroupPicker ? 'block' : 'none'};">
-                    <button type="button" class="btn btn-light btn-sm" style="width:100%; justify-content:space-between; border:1px solid #94a3b8; background:#fff;" onclick="toggleExamRuleDropdown('${ex.key}')">
-                        <span id="exRuleSummary_${ex.key}" style="font-size:12px; color:#1f4e78;">${summaryLabel}</span>
+                <div id="exGroupsBox_${escapeAttr(ex.key)}" style="margin-top:8px; display:${showGroupPicker ? 'block' : 'none'};">
+                    <button type="button" class="btn btn-light btn-sm" style="width:100%; justify-content:space-between; border:1px solid #94a3b8; background:#fff;" onclick="toggleExamRuleDropdown('${escapeAttr(ex.key)}')">
+                        <span id="exRuleSummary_${escapeAttr(ex.key)}" style="font-size:12px; color:#1f4e78;">${escapeHtml(summaryLabel)}</span>
                         <span>▼</span>
                     </button>
-                    <div id="exRuleMenu_${ex.key}" class="hidden" style="margin-top:4px; background:#fff; border:1.5px solid #1f4e78; border-radius:8px; box-shadow:0 6px 18px rgba(0,0,0,0.12); text-align:right;">
+                    <div id="exRuleMenu_${escapeAttr(ex.key)}" class="hidden" style="margin-top:4px; background:#fff; border:1.5px solid #1f4e78; border-radius:8px; box-shadow:0 6px 18px rgba(0,0,0,0.12); text-align:right;">
                         <div style="padding:6px; border-bottom:1px solid #e2e8f0; background:#f8fafc;">
-                            <input type="text" class="input-field" style="padding:5px 8px; font-size:12px;" placeholder="ابحث باسم المجموعة..." oninput="filterExamRuleGroups('${ex.key}', this.value)">
+                            <input type="text" class="input-field" style="padding:5px 8px; font-size:12px;" placeholder="ابحث باسم المجموعة..." oninput="filterExamRuleGroups('${escapeAttr(ex.key)}', this.value)">
                         </div>
                         <div style="max-height:165px; overflow-y:auto; padding:2px 0;">
                             ${checkboxesHtml || '<div style="padding:8px; color:#64748b; font-size:12px;">لا توجد مجموعات</div>'}
                         </div>
                         <div style="padding:6px; border-top:1px solid #e2e8f0; background:#f8fafc; text-align:left;">
-                            <button type="button" class="btn btn-light btn-sm" onclick="toggleExamRuleDropdown('${ex.key}')">تم ✔</button>
+                            <button type="button" class="btn btn-light btn-sm" onclick="toggleExamRuleDropdown('${escapeAttr(ex.key)}')">تم ✔</button>
                         </div>
                     </div>
                 </div>
@@ -1345,13 +1755,12 @@ function renderExamsDropdown() {
         }).join('');
     }
 
-    // 2. تعبئة قائمة المعاينة في جدول موقف المجموعات
     const inspectSel = document.getElementById('adminInspectExamSelect');
     if (inspectSel) {
         const prevVal = inspectSel.value;
         inspectSel.innerHTML = examsList.map(ex => {
             const isOpen = APP_STATE.settings.exam_rules[ex.key]?.enabled;
-            return `<option value="${ex.key}">${ex.label} ${isOpen ? '(مفتوح ✔)' : '(مغلق)'}</option>`;
+            return `<option value="${escapeAttr(ex.key)}">${escapeHtml(ex.label)} ${isOpen ? '(مفتوح ✔)' : '(مغلق)'}</option>`;
         }).join('');
         if (prevVal && examsList.some(e => e.key === prevVal)) {
             inspectSel.value = prevVal;
@@ -1447,12 +1856,15 @@ async function saveExamRulesSettings() {
     const enabledKeys = getAllEnabledExamKeys();
     APP_STATE.settings.active_exam = enabledKeys.length > 0 ? enabledKeys[0] : 'none';
 
-    await saveState();
-    renderExamsDropdown();
-    renderAdminGroups();
-    renderAdminReports();
-    alert(`تم حفظ إعدادات الاختبارات والصلاحيات بنجاح ✔
-عدد الامتحانات المفتوحة حالياً: (${enabledKeys.length})`);
+    try {
+        await saveState({ syncSplit: true });
+        renderExamsDropdown();
+        renderAdminGroups();
+        renderAdminReports();
+        showToast(`تم حفظ إعدادات الاختبارات (${enabledKeys.length} مفتوح)`, 'success');
+    } catch (err) {
+        alert('تعذر حفظ إعدادات الاختبارات: ' + err.message);
+    }
 }
 
 async function addNewExam() {
@@ -1473,12 +1885,16 @@ async function addNewExam() {
     };
     APP_STATE.settings.active_exam = newKey;
 
-    await saveState();
-    document.getElementById('newExamTitleInput').value = '';
-    renderExamsDropdown();
-    renderAdminGroups();
-    renderAdminReports();
-    alert(`تمت إضافة امتحان (${title}) وتفعيله كاختبار مفتوح للرصد بنجاح!`);
+    try {
+        await saveState({ syncSplit: true });
+        document.getElementById('newExamTitleInput').value = '';
+        renderExamsDropdown();
+        renderAdminGroups();
+        renderAdminReports();
+        showToast(`تمت إضافة وتفعيل امتحان (${title})`, 'success');
+    } catch (err) {
+        alert('تعذر إضافة الامتحان: ' + err.message);
+    }
 }
 
 function switchAdminTab(tabId, btnEl) {
@@ -1525,27 +1941,27 @@ function renderAdminGroups() {
 
     tbody.innerHTML = groupNames.map(gName => {
         const meta = APP_STATE.groups_meta[gName];
-        const count = APP_STATE.students.filter(s => s.group === gName).length;
+        const count = getStudentsInGroup(gName).length;
         const sub = inspectExam !== 'none' ? getSubmissionRecord(inspectExam, gName) : { status: 'draft' };
         const checked = meta.has_ahkam ? 'checked' : '';
         const perm = inspectExam !== 'none' ? isExamAllowedForGroup(inspectExam, gName) : { allowed: false, reason: 'مغلق' };
         const permBadge = perm.allowed
             ? `<span class="badge badge-approved">مفتوح للرصد ✔</span>`
-            : `<span class="badge badge-returned" title="${perm.reason}">مغلق (${perm.reason})</span>`;
+            : `<span class="badge badge-returned" title="${escapeAttr(perm.reason)}">مغلق (${escapeHtml(perm.reason)})</span>`;
 
         return `
         <tr>
-            <td>${meta.group_num || '-'}</td>
-            <td style="font-weight:bold;">${gName}</td>
-            <td>${meta.teacher || '-'}</td>
+            <td>${escapeHtml(meta.group_num || '-')}</td>
+            <td style="font-weight:bold;">${escapeHtml(gName)}</td>
+            <td>${escapeHtml(meta.teacher || '-')}</td>
             <td>${count}</td>
             <td>
-                <input type="checkbox" ${checked} onchange="toggleGroupAhkam('${gName}', this.checked)">
+                <input type="checkbox" ${checked} onchange="toggleGroupAhkam('${escapeAttr(gName)}', this.checked)">
             </td>
             <td>${permBadge}</td>
             <td>${inspectExam === 'none' ? '<span class="badge badge-draft">مغلق</span>' : getStatusBadge(sub.status)}</td>
             <td>
-                <button class="btn btn-primary btn-sm" onclick="openAdminEditGroup('${gName}', '${inspectExam}')">عرض / تعديل الدرجات</button>
+                <button class="btn btn-primary btn-sm" onclick="openAdminEditGroup('${escapeAttr(gName)}', '${escapeAttr(inspectExam)}')">عرض / تعديل الدرجات</button>
             </td>
         </tr>`;
     }).join('');
@@ -1554,7 +1970,12 @@ function renderAdminGroups() {
 async function toggleGroupAhkam(groupName, isChecked) {
     if (APP_STATE.groups_meta[groupName]) {
         APP_STATE.groups_meta[groupName].has_ahkam = isChecked;
-        await saveState();
+        try {
+            await saveState();
+            showToast(`تم تحديث خاصية الأحكام لمجموعة (${groupName})`, 'success');
+        } catch (err) {
+            alert('تعذر حفظ التعديل: ' + err.message);
+        }
     }
 }
 
@@ -1569,9 +1990,9 @@ function buildReviewerScopeWidget(u, idx, allGroupNames) {
 
     const selectedSet = new Set(Array.isArray(revGroups) ? revGroups : []);
     const checkboxesHtml = allGroupNames.map(gName => `
-        <label class="rev-grp-item_${idx}" data-name="${gName}" style="display:flex; align-items:center; gap:6px; padding:5px 8px; border-bottom:1px solid #f1f5f9; font-size:12px; cursor:pointer;">
-            <input type="checkbox" class="rev-grp-chk_${idx}" value="${gName}" ${selectedSet.has(gName) ? 'checked' : ''}>
-            <span>${gName}</span>
+        <label class="rev-grp-item_${idx}" data-name="${escapeAttr(gName)}" style="display:flex; align-items:center; gap:6px; padding:5px 8px; border-bottom:1px solid #f1f5f9; font-size:12px; cursor:pointer;">
+            <input type="checkbox" class="rev-grp-chk_${idx}" value="${escapeAttr(gName)}" ${selectedSet.has(gName) ? 'checked' : ''}>
+            <span>${escapeHtml(gName)}</span>
         </label>
     `).join('');
 
@@ -1589,7 +2010,7 @@ function buildReviewerScopeWidget(u, idx, allGroupNames) {
 
             <div id="revCustomWrapper_${idx}" style="margin-top:5px; display:${mode === 'CUSTOM' ? 'block' : 'none'};">
                 <button type="button" class="btn btn-light btn-sm" style="width:100%; justify-content:space-between; border:1px solid #94a3b8; background:#fff;" onclick="toggleRevDropdown(${idx})">
-                    <span id="revSummary_${idx}" style="font-size:11.5px; color:#1f4e78;">${summaryText}</span>
+                    <span id="revSummary_${idx}" style="font-size:11.5px; color:#1f4e78;">${escapeHtml(summaryText)}</span>
                     <span>▼</span>
                 </button>
 
@@ -1621,12 +2042,12 @@ function renderNewTeacherGroupsList() {
     listEl.innerHTML = allGroupNames.map(gName => {
         const curTch = APP_STATE.groups_meta[gName]?.teacher || '';
         return `
-        <label class="new-tch-grp-item" data-name="${gName}" style="display:flex; align-items:center; justify-content:space-between; gap:6px; padding:5px 8px; border-bottom:1px solid #f1f5f9; font-size:12px; cursor:pointer;">
+        <label class="new-tch-grp-item" data-name="${escapeAttr(gName)}" style="display:flex; align-items:center; justify-content:space-between; gap:6px; padding:5px 8px; border-bottom:1px solid #f1f5f9; font-size:12px; cursor:pointer;">
             <span style="display:flex; align-items:center; gap:6px;">
-                <input type="checkbox" class="new-tch-grp-chk" value="${gName}" onchange="updateNewTeacherGroupsSummary()">
-                <b>${gName}</b>
+                <input type="checkbox" class="new-tch-grp-chk" value="${escapeAttr(gName)}" onchange="updateNewTeacherGroupsSummary()">
+                <b>${escapeHtml(gName)}</b>
             </span>
-            <small style="color:#64748b;">${curTch ? `(حالياً: ${curTch})` : '(بدون معلم)'}</small>
+            <small style="color:#64748b;">${curTch ? `(حالياً: ${escapeHtml(curTch)})` : '(بدون معلم)'}</small>
         </label>`;
     }).join('');
 }
@@ -1666,19 +2087,19 @@ function buildTeacherGroupsWidget(u, idx, allGroupNames) {
         const curTch = APP_STATE.groups_meta[gName]?.teacher || '';
         const otherNote = (curTch && curTch !== u.name) ? ` (ستُنقل من: ${curTch})` : '';
         return `
-        <label class="tch-grp-item_${idx}" data-name="${gName}" style="display:flex; align-items:center; justify-content:space-between; gap:6px; padding:5px 8px; border-bottom:1px solid #f1f5f9; font-size:12px; cursor:pointer;">
+        <label class="tch-grp-item_${idx}" data-name="${escapeAttr(gName)}" style="display:flex; align-items:center; justify-content:space-between; gap:6px; padding:5px 8px; border-bottom:1px solid #f1f5f9; font-size:12px; cursor:pointer;">
             <span style="display:flex; align-items:center; gap:6px;">
-                <input type="checkbox" class="tch-grp-chk_${idx}" value="${gName}" ${selectedSet.has(gName) ? 'checked' : ''}>
-                <b>${gName}</b>
+                <input type="checkbox" class="tch-grp-chk_${idx}" value="${escapeAttr(gName)}" ${selectedSet.has(gName) ? 'checked' : ''}>
+                <b>${escapeHtml(gName)}</b>
             </span>
-            <small style="color:#b45309;">${otherNote}</small>
+            <small style="color:#b45309;">${escapeHtml(otherNote)}</small>
         </label>`;
     }).join('');
 
     return `
         <div style="margin-bottom:6px;">
             <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; flex-wrap:wrap;">
-                <span><b>مجموعات الرصد:</b> ${teachGroupsText}</span>
+                <span><b>مجموعات الرصد:</b> ${escapeHtml(teachGroupsText)}</span>
                 <button type="button" class="btn btn-light btn-sm" style="border:1px solid #93c5fd; background:#eff6ff; color:#1f4e78;" onclick="toggleTchGroupsDropdown(${idx})">تعديل المجموعات ✎</button>
             </div>
             <div id="tchGroupsDropdown_${idx}" class="hidden" style="margin-top:5px; background:#ffffff; border:1.5px solid #155e3b; border-radius:8px; box-shadow:0 6px 18px rgba(0,0,0,0.14); text-align:right; z-index:50;">
@@ -1710,21 +2131,18 @@ function filterTchGroups(userIdx, query) {
     });
 }
 
-// إسناد مجموعات لمعلم وإلغاؤها تلقائياً من عند المعلم السابق وتحديث بيانات المجموعات والطلاب
 function applyTeacherGroupAssignment(targetTeacherIdx, selectedGroups) {
     const targetTeacher = APP_STATE.users[targetTeacherIdx];
     if (!targetTeacher) return;
 
     const selectedSet = new Set(selectedGroups);
 
-    // 1. إزالة المجموعات المختارة من أي معلم آخر كانت بيده
     APP_STATE.users.forEach((u, i) => {
         if (i !== targetTeacherIdx && u.role === 'teacher' && Array.isArray(u.groups)) {
             u.groups = u.groups.filter(g => !selectedSet.has(g));
         }
     });
 
-    // 2. إذا كانت هناك مجموعات أُزيلت من هذا المعلم نفسه، نفرغ اسم المعلم منها في groups_meta
     const oldGroups = Array.isArray(targetTeacher.groups) ? targetTeacher.groups : [];
     oldGroups.forEach(g => {
         if (!selectedSet.has(g) && APP_STATE.groups_meta[g] && APP_STATE.groups_meta[g].teacher === targetTeacher.name) {
@@ -1732,19 +2150,15 @@ function applyTeacherGroupAssignment(targetTeacherIdx, selectedGroups) {
         }
     });
 
-    // 3. تحديث اسم المعلم في groups_meta وفي سجل الطلاب لكل مجموعة مسندة
     selectedGroups.forEach(g => {
         if (APP_STATE.groups_meta[g]) {
             APP_STATE.groups_meta[g].teacher = targetTeacher.name;
         }
-        APP_STATE.students.forEach(s => {
-            if (s.group === g) {
-                s.teacher = targetTeacher.name;
-            }
+        getStudentsInGroup(g).forEach(s => {
+            s.teacher = targetTeacher.name;
         });
     });
 
-    // 4. حفظ قائمة المجموعات للمعلم المستهدف
     targetTeacher.groups = selectedGroups;
 }
 
@@ -1752,21 +2166,26 @@ async function saveTeacherAssignedGroups(userIdx, btnEl) {
     const u = APP_STATE.users[userIdx];
     if (!u || u.role !== 'teacher') return;
 
-    const selected = [];
-    document.querySelectorAll(`.tch-grp-chk_${userIdx}:checked`).forEach(chk => {
-        selected.push(chk.value);
-    });
+    const selected = Array.from(document.querySelectorAll(`.tch-grp-chk_${userIdx}:checked`)).map(c => c.value);
 
     if (btnEl) {
         btnEl.textContent = 'جاري الحفظ...';
         btnEl.disabled = true;
     }
 
-    applyTeacherGroupAssignment(userIdx, selected);
-    await saveState();
-    renderAdminGroups();
-    renderAdminUsers();
-    alert(`تم تحديث مجموعات المعلم أ/ ${u.name} بنجاح ✔\nونُقلت المجموعات المختارة إليه تلقائياً.`);
+    try {
+        applyTeacherGroupAssignment(userIdx, selected);
+        await saveState({ syncSplit: true });
+        renderAdminGroups();
+        renderAdminUsers();
+        showToast(`تم تحديث مجموعات المعلم أ/ ${u.name}`, 'success');
+    } catch (err) {
+        alert('تعذر حفظ المجموعات: ' + err.message);
+        if (btnEl) {
+            btnEl.textContent = 'حفظ ونقل المجموعات ✔';
+            btnEl.disabled = false;
+        }
+    }
 }
 
 async function addTeacher() {
@@ -1780,7 +2199,7 @@ async function addTeacher() {
     const selectedGroups = Array.from(document.querySelectorAll('.new-tch-grp-chk:checked')).map(c => c.value);
 
     let randCode = 'TCH-' + Math.floor(100 + Math.random() * 900);
-    while (APP_STATE.users.some(u => u.code.toUpperCase() === randCode)) {
+    while (APP_STATE.users.some(u => String(u.code || '').toUpperCase() === randCode)) {
         randCode = 'TCH-' + Math.floor(100 + Math.random() * 900);
     }
 
@@ -1799,19 +2218,19 @@ async function addTeacher() {
         applyTeacherGroupAssignment(newIdx, selectedGroups);
     }
 
-    await saveState();
-    document.getElementById('newTchName').value = '';
-    document.getElementById('newTchPhone').value = '';
-    document.getElementById('newTchGroupsMenu').classList.add('hidden');
-    document.getElementById('newTchGroupsSummary').textContent = 'اختيار المجموعات المسندة للمعلم (اختياري)...';
+    try {
+        await saveState({ syncSplit: true });
+        document.getElementById('newTchName').value = '';
+        document.getElementById('newTchPhone').value = '';
+        document.getElementById('newTchGroupsMenu').classList.add('hidden');
+        document.getElementById('newTchGroupsSummary').textContent = 'اختيار المجموعات المسندة للمعلم (اختياري)...';
 
-    renderAdminGroups();
-    renderAdminUsers();
-
-    const grpNote = selectedGroups.length > 0
-        ? `\nوتم إسناد (${selectedGroups.length}) مجموعة إليه وإلغاؤها من المعلمين السابقين تلقائياً.`
-        : '';
-    alert(`تمت إضافة المعلم أ/ ${name} بنجاح ✔\nكود الدخول: ${randCode}${grpNote}`);
+        renderAdminGroups();
+        renderAdminUsers();
+        showToast(`تمت إضافة المعلم ${name} بكود ${randCode}`, 'success');
+    } catch (err) {
+        alert('تعذر إضافة المعلم: ' + err.message);
+    }
 }
 
 async function deleteUser(userIdx) {
@@ -1825,7 +2244,8 @@ async function deleteUser(userIdx) {
     const roleName = u.role === 'teacher' ? 'المعلم' : 'المراجع';
     const hasGroups = (u.role === 'teacher' && Array.isArray(u.groups) && u.groups.length > 0);
     const extraWarn = hasGroups
-        ? `\nتنبيه: لدى هذا المعلم (${u.groups.length}) مجموعة مسندة (${u.groups.join('، ')})، وستصبح بدون معلم لحين إسنادها لمعلم آخر.`
+        ? `
+تنبيه: لدى هذا المعلم (${u.groups.length}) مجموعة مسندة (${u.groups.join('، ')})، وستصبح بدون معلم لحين إسنادها لمعلم آخر.`
         : '';
 
     if (!confirm(`هل أنت متأكد من حذف ${roleName}: (${u.name}) نهائياً؟${extraWarn}`)) {
@@ -1837,19 +2257,21 @@ async function deleteUser(userIdx) {
             if (APP_STATE.groups_meta[g] && APP_STATE.groups_meta[g].teacher === u.name) {
                 APP_STATE.groups_meta[g].teacher = '';
             }
-            APP_STATE.students.forEach(s => {
-                if (s.group === g && s.teacher === u.name) {
-                    s.teacher = '';
-                }
+            getStudentsInGroup(g).forEach(s => {
+                if (s.teacher === u.name) s.teacher = '';
             });
         });
     }
 
     APP_STATE.users.splice(userIdx, 1);
-    await saveState();
-    renderAdminGroups();
-    renderAdminUsers();
-    alert(`تم حذف ${roleName} (${u.name}) بنجاح ✔`);
+    try {
+        await saveState({ syncSplit: true });
+        renderAdminGroups();
+        renderAdminUsers();
+        showToast(`تم حذف ${roleName} (${u.name})`, 'success');
+    } catch (err) {
+        alert('تعذر حذف المستخدم: ' + err.message);
+    }
 }
 
 let expandedUserCards = new Set();
@@ -1896,8 +2318,13 @@ async function toggleTeacherExtraRole(userIdx, roleType, isChecked) {
         u.is_admin = isChecked;
         if (!isChecked) u.can_manage_codes = false;
     }
-    await saveState();
-    renderAdminUsers();
+    try {
+        await saveState({ syncSplit: true });
+        renderAdminUsers();
+        showToast('تم تحديث صلاحيات المستخدم', 'success');
+    } catch (err) {
+        alert('تعذر حفظ الصلاحية: ' + err.message);
+    }
 }
 
 async function toggleUserCodePermission(userIdx, isChecked) {
@@ -1910,8 +2337,13 @@ async function toggleUserCodePermission(userIdx, isChecked) {
     if (!u) return;
     u.can_manage_codes = isChecked;
     if (isChecked && u.role === 'teacher') u.is_admin = true;
-    await saveState();
-    renderAdminUsers();
+    try {
+        await saveState({ syncSplit: true });
+        renderAdminUsers();
+        showToast('تم تحديث صلاحية إدارة الأكواد', 'success');
+    } catch (err) {
+        alert('تعذر حفظ الصلاحية: ' + err.message);
+    }
 }
 
 function canCurrentUserViewLoginLogs() {
@@ -1928,8 +2360,13 @@ async function toggleUserLoginLogsPermission(userIdx, isChecked) {
     const u = APP_STATE.users[userIdx];
     if (!u) return;
     u.can_view_login_logs = isChecked;
-    await saveState();
-    renderAdminUsers();
+    try {
+        await saveState({ syncSplit: true });
+        renderAdminUsers();
+        showToast('تم تحديث صلاحية سجل الدخول', 'success');
+    } catch (err) {
+        alert('تعذر حفظ الصلاحية: ' + err.message);
+    }
 }
 
 async function changeReviewerScope(userIdx, mode) {
@@ -1942,8 +2379,13 @@ async function changeReviewerScope(userIdx, mode) {
     const wrap = document.getElementById(`revCustomWrapper_${userIdx}`);
     if (wrap) wrap.style.display = (mode === 'CUSTOM') ? 'block' : 'none';
     if (mode !== 'CUSTOM') {
-        await saveState();
-        renderAdminUsers();
+        try {
+            await saveState({ syncSplit: true });
+            renderAdminUsers();
+            showToast('تم تحديث نطاق المراجعة', 'success');
+        } catch (err) {
+            alert('تعذر حفظ النطاق: ' + err.message);
+        }
     }
 }
 
@@ -1968,9 +2410,14 @@ async function saveReviewerGroups(userIdx, btnEl) {
     else u.review_groups = selected;
 
     if (btnEl) { btnEl.textContent = 'جاري...'; btnEl.disabled = true; }
-    await saveState();
-    renderAdminUsers();
-    alert(`تم حفظ مجموعات المراجعة لـ (${u.name}) بنجاح ✔`);
+    try {
+        await saveState({ syncSplit: true });
+        renderAdminUsers();
+        showToast(`تم حفظ مجموعات المراجعة لـ (${u.name})`, 'success');
+    } catch (err) {
+        alert('تعذر حفظ مجموعات المراجعة: ' + err.message);
+        if (btnEl) { btnEl.textContent = 'حفظ المجموعات ✔'; btnEl.disabled = false; }
+    }
 }
 
 function renderAdminUsers() {
@@ -2078,32 +2525,30 @@ function renderAdminUsers() {
 
         return `
         <div style="border:1.5px solid ${isOpen ? '#1f4e78' : '#cbd5e1'}; border-radius:10px; background:#ffffff; overflow:hidden; transition:border-color 0.2s;">
-            <!-- رأس القائمة القابل للفتح والطي -->
             <div onclick="toggleUserAccordionCard(${idx})" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; padding:10px 14px; background:${isOpen ? '#eff6ff' : '#f8fafc'}; cursor:pointer; user-select:none;">
                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                    <span style="font-weight:bold; font-size:14px; color:#1e293b;">${u.name}</span>
+                    <span style="font-weight:bold; font-size:14px; color:#1e293b;">${escapeHtml(u.name)}</span>
                     ${roleBadges}
-                    <small style="color:#64748b;">(${groupsSummary})</small>
+                    <small style="color:#64748b;">(${escapeHtml(groupsSummary)})</small>
                 </div>
                 <div style="display:flex; align-items:center; gap:10px;">
-                    <span style="font-family:monospace; font-weight:bold; font-size:12.5px; color:#1f4e78; background:#e0f2fe; padding:3px 8px; border-radius:6px; direction:ltr;">${u.code}</span>
+                    <span style="font-family:monospace; font-weight:bold; font-size:12.5px; color:#1f4e78; background:#e0f2fe; padding:3px 8px; border-radius:6px; direction:ltr;">${escapeHtml(u.code)}</span>
                     <span id="userCardArrow_${idx}" style="font-size:12px; color:#1f4e78; font-weight:bold;">${isOpen ? '▲' : '▼'}</span>
                 </div>
             </div>
 
-            <!-- تفاصيل التحكم المنسدلة -->
             <div id="userCardBody_${idx}" class="${isOpen ? '' : 'hidden'}" style="padding:12px 14px; border-top:1px solid #e2e8f0; background:#ffffff;">
                 <div class="grid-2" style="margin-bottom:10px;">
                     <div>
                         <label style="font-size:11.5px; font-weight:bold; display:block; margin-bottom:4px; color:#475569;">كود الدخول:</label>
                         <div style="display:flex; gap:6px; align-items:center;">
-                            <input type="text" id="userCodeInp_${idx}" class="code-edit-input" style="flex:1; width:auto;" value="${u.code}">
+                            <input type="text" id="userCodeInp_${idx}" class="code-edit-input" style="flex:1; width:auto;" value="${escapeAttr(u.code)}">
                             <button type="button" class="btn btn-primary btn-sm" onclick="saveUserRow(${idx}, this)">حفظ الكود</button>
                         </div>
                     </div>
                     <div>
                         <label style="font-size:11.5px; font-weight:bold; display:block; margin-bottom:4px; color:#475569;">رقم الواتساب:</label>
-                        <input type="text" id="userPhoneInp_${idx}" class="input-field" style="padding:6px 10px; font-size:13px; text-align:center;" value="${u.phone || ''}" placeholder="010..." onchange="saveUserRow(${idx})">
+                        <input type="text" id="userPhoneInp_${idx}" class="input-field" style="padding:6px 10px; font-size:13px; text-align:center;" value="${escapeAttr(u.phone || '')}" placeholder="010..." onchange="saveUserRow(${idx})">
                     </div>
                 </div>
 
@@ -2124,7 +2569,7 @@ async function saveUserRow(userIdx, btnEl) {
         renderAdminUsers();
         return;
     }
-    const duplicate = APP_STATE.users.some((u, i) => i !== userIdx && u.code.toUpperCase() === cleanCode);
+    const duplicate = APP_STATE.users.some((u, i) => i !== userIdx && String(u.code || '').toUpperCase() === cleanCode);
     if (duplicate) {
         alert(`الكود (${cleanCode}) مستخدم بالفعل لمستخدم آخر! يرجى اختيار كود مختلف.`);
         renderAdminUsers();
@@ -2141,33 +2586,13 @@ async function saveUserRow(userIdx, btnEl) {
         btnEl.disabled = true;
     }
 
-    await saveState();
-    renderAdminUsers();
-    alert(`تم حفظ التعديل بنجاح ✔\nالاسم: ${APP_STATE.users[userIdx].name}\nالكود الجديد: ${cleanCode}`);
-}
-
-async function updateUserCode(userIdx, newCode) {
-    const clean = newCode.trim().toUpperCase();
-    if (!clean) {
-        alert('لا يمكن ترك كود الدخول فارغاً!');
+    try {
+        await saveState({ syncSplit: true });
         renderAdminUsers();
-        return;
-    }
-    const duplicate = APP_STATE.users.some((u, i) => i !== userIdx && u.code.toUpperCase() === clean);
-    if (duplicate) {
-        alert(`الكود (${clean}) مستخدم بالفعل لمستخدم آخر! يرجى اختيار كود مختلف.`);
-        renderAdminUsers();
-        return;
-    }
-    APP_STATE.users[userIdx].code = clean;
-    await saveState();
-    renderAdminUsers();
-}
-
-async function updateUserPhone(userIdx, phone) {
-    if (APP_STATE.users[userIdx]) {
-        APP_STATE.users[userIdx].phone = phone.trim();
-        await saveState();
+        showToast(`تم حفظ بيانات (${APP_STATE.users[userIdx].name})`, 'success');
+    } catch (err) {
+        alert('تعذر حفظ التعديل: ' + err.message);
+        if (btnEl) { btnEl.textContent = 'حفظ الكود'; btnEl.disabled = false; }
     }
 }
 
@@ -2180,11 +2605,15 @@ async function addReviewer() {
         randCode = 'REV-' + Math.floor(100 + Math.random() * 900);
     }
     APP_STATE.users.push({ code: randCode, name, role: 'reviewer', groups: 'ALL', phone });
-    await saveState();
-    document.getElementById('newRevName').value = '';
-    document.getElementById('newRevPhone').value = '';
-    renderAdminUsers();
-    alert(`تمت إضافة المراجع بنجاح بكود: ${randCode}`);
+    try {
+        await saveState({ syncSplit: true });
+        document.getElementById('newRevName').value = '';
+        document.getElementById('newRevPhone').value = '';
+        renderAdminUsers();
+        showToast(`تمت إضافة المراجع بكود: ${randCode}`, 'success');
+    } catch (err) {
+        alert('تعذر إضافة المراجع: ' + err.message);
+    }
 }
 
 function sendCodeWhatsApp(userIdx) {
@@ -2195,11 +2624,18 @@ function sendCodeWhatsApp(userIdx) {
     }
     const pageUrl = window.location.href.split('?')[0];
     const roleText = u.role === 'teacher' ? 'رصد الدرجات' : 'مراجعة واعتماد الدرجات';
-    const msg = `السلام عليكم الشيخ/ ${u.name}\nتم تفعيل حسابكم في منظومة ${roleText} بـ ${APP_STATE.settings.school_name}.\n\n🔗 رابط الدخول:\n${pageUrl}\n🔑 كود الدخول الخاص بكم: ${u.code}\n\nجزاكم الله خيراً.`;
+    const msg = `السلام عليكم الشيخ/ ${u.name}
+تم تفعيل حسابكم في منظومة ${roleText} بـ ${APP_STATE.settings.school_name}.
+
+🔗 رابط الدخول:
+${pageUrl}
+🔑 كود الدخول الخاص بكم: ${u.code}
+
+جزاكم الله خيراً.`;
     openWhatsApp(u.phone, msg);
 }
 
-// ==================== سجل الدخول والأجهزة اليومي (مجمّع يومياً لكل مستخدم) ====================
+// ==================== سجل الدخول والأجهزة اليومي ====================
 function detectClientDeviceSummary() {
     const ua = navigator.userAgent || '';
     let os = 'جهاز غير معروف';
@@ -2263,12 +2699,11 @@ function recordDailyLoginActivity(user) {
         if (!entry.devices.includes(deviceStr)) entry.devices.push(deviceStr);
     }
 
-    if (APP_STATE.login_activity.length > 400) {
-        APP_STATE.login_activity = APP_STATE.login_activity.slice(0, 400);
+    if (APP_STATE.login_activity.length > 300) {
+        APP_STATE.login_activity = APP_STATE.login_activity.slice(0, 300);
     }
 }
 
-// ==================== سجل تعديلات الدرجات (مجمّع لكل عملية حفظ لتخفيف الضغط على قاعدة البيانات) ====================
 function appendBatchGradeLog(groupName, examLabel, changesList, actionLabel) {
     if (!Array.isArray(changesList) || !changesList.length) return;
     if (!Array.isArray(APP_STATE.grade_logs)) APP_STATE.grade_logs = [];
@@ -2285,14 +2720,9 @@ function appendBatchGradeLog(groupName, examLabel, changesList, actionLabel) {
         items: changesList.slice(0, 80)
     });
 
-    if (APP_STATE.grade_logs.length > 250) {
-        APP_STATE.grade_logs = APP_STATE.grade_logs.slice(0, 250);
+    if (APP_STATE.grade_logs.length > 200) {
+        APP_STATE.grade_logs = APP_STATE.grade_logs.slice(0, 200);
     }
-}
-
-function toggleBatchLogDetails(logId) {
-    const el = document.getElementById(`batchLogDetail_${logId}`);
-    if (el) el.classList.toggle('hidden');
 }
 
 let adminEditingExam = null;
@@ -2305,21 +2735,22 @@ function openAdminEditGroup(groupName, examKeyOverride) {
     }
     adminEditingGroup = groupName;
     adminEditingExam = targetExam;
+    const maxScore = getExamMaxScore(targetExam);
     const meta = APP_STATE.groups_meta[groupName] || { has_ahkam: false };
     const sub = getSubmissionRecord(targetExam, groupName);
     document.getElementById('adminModalTitle').textContent = `مراجعة وتعديل درجات مجموعة: ${groupName} (${getExamLabel(targetExam)})`;
-    document.getElementById('adminModalStatusRow').innerHTML = `المعلم: <b>${meta.teacher || '-'}</b> | الحالة الحالية: ${getStatusBadge(sub.status)}`;
+    document.getElementById('adminModalStatusRow').innerHTML = `المعلم: <b>${escapeHtml(meta.teacher || '-')}</b> | الحالة الحالية: ${getStatusBadge(sub.status)} | النهاية العظمى: <b>${maxScore}</b>`;
     document.getElementById('adminModalNoteInp').value = sub.note || '';
-    document.getElementById('thAdminExamCol').textContent = `درجة ${getExamLabel(targetExam)}`;
+    document.getElementById('thAdminExamCol').textContent = `درجة ${getExamLabel(targetExam)} (0-${maxScore})`;
     document.getElementById('thAdminAhkamCol').style.display = meta.has_ahkam ? '' : 'none';
 
-    const students = APP_STATE.students.filter(s => s.group === groupName);
+    const students = getStudentsInGroup(groupName);
     document.getElementById('adminModalStudentsTable').innerHTML = students.map(s => `
         <tr>
-            <td>${s.student_id}</td>
-            <td style="font-weight:bold;">${s.name}</td>
-            <td><input type="number" step="0.5" class="grade-input admin-exam-inp" data-sid="${s.student_id}" value="${s.scores[targetExam] ?? ''}"></td>
-            <td style="display:${meta.has_ahkam ? '' : 'none'}"><input type="number" step="0.5" class="grade-input admin-ahkam-inp" data-sid="${s.student_id}" value="${s.scores.ahkam ?? ''}"></td>
+            <td>${escapeHtml(s.student_id)}</td>
+            <td style="font-weight:bold;">${escapeHtml(s.name)}</td>
+            <td><input type="number" step="0.5" min="0" max="${maxScore}" class="grade-input admin-exam-inp" data-sid="${escapeAttr(s.student_id)}" value="${escapeAttr(s.scores[targetExam] ?? '')}"></td>
+            <td style="display:${meta.has_ahkam ? '' : 'none'}"><input type="number" step="0.5" min="0" max="100" class="grade-input admin-ahkam-inp" data-sid="${escapeAttr(s.student_id)}" value="${escapeAttr(s.scores.ahkam ?? '')}"></td>
         </tr>
     `).join('');
 
@@ -2336,19 +2767,34 @@ function closeAdminModal() {
     adminEditingExam = null;
 }
 
+function validateScoreInputs(selector, maxScore) {
+    for (const inp of document.querySelectorAll(selector)) {
+        const raw = inp.value.trim();
+        if (raw === '') continue;
+        const num = Number(raw);
+        if (!Number.isFinite(num) || num < 0 || num > maxScore) {
+            inp.focus();
+            alert(`قيمة غير صالحة (${raw})! يجب أن تكون الدرجة رقماً بين 0 و ${maxScore}.`);
+            return false;
+        }
+    }
+    return true;
+}
+
 function applyAdminModalInputsToState(actionDesc) {
     const targetExam = adminEditingExam || getDefaultInspectExamKey();
     const examLbl = getExamLabel(targetExam);
     const grpName = adminEditingGroup || '';
     const batchChanges = [];
+    const changedIds = [];
 
     document.querySelectorAll('.admin-exam-inp').forEach(inp => {
-        const sid = inp.dataset.sid;
-        const st = APP_STATE.students.find(s => String(s.student_id) === String(sid));
+        const st = findStudentById(inp.dataset.sid);
         if (st) {
             const oldVal = String(st.scores[targetExam] ?? '').trim();
             const newVal = inp.value.trim();
             if (oldVal !== newVal) {
+                changedIds.push(st.student_id);
                 batchChanges.push({
                     student_name: st.name,
                     student_id: st.student_id,
@@ -2361,12 +2807,12 @@ function applyAdminModalInputsToState(actionDesc) {
         }
     });
     document.querySelectorAll('.admin-ahkam-inp').forEach(inp => {
-        const sid = inp.dataset.sid;
-        const st = APP_STATE.students.find(s => String(s.student_id) === String(sid));
+        const st = findStudentById(inp.dataset.sid);
         if (st) {
             const oldVal = String(st.scores.ahkam ?? '').trim();
             const newVal = inp.value.trim();
             if (oldVal !== newVal) {
+                if (!changedIds.includes(st.student_id)) changedIds.push(st.student_id);
                 batchChanges.push({
                     student_name: st.name,
                     student_id: st.student_id,
@@ -2382,20 +2828,29 @@ function applyAdminModalInputsToState(actionDesc) {
     if (batchChanges.length > 0) {
         appendBatchGradeLog(grpName, examLbl, batchChanges, actionDesc || 'تعديل إداري');
     }
+    return changedIds;
 }
 
 async function saveAdminModalGrades() {
-    applyAdminModalInputsToState();
-    await saveState();
-    renderAdminReports();
-    alert('تم حفظ التعديلات الإدارية وتسجيلها في سجل التعديلات بنجاح ✔');
-    closeAdminModal();
+    const maxScore = getExamMaxScore(adminEditingExam);
+    if (!validateScoreInputs('.admin-exam-inp', maxScore) || !validateScoreInputs('.admin-ahkam-inp', 100)) return;
+    const changedIds = applyAdminModalInputsToState();
+    try {
+        await saveState({ syncSplit: true, changedStudentIds: changedIds });
+        renderAdminReports();
+        showToast('تم حفظ التعديلات الإدارية بنجاح', 'success');
+        closeAdminModal();
+    } catch (err) {
+        alert('تعذر حفظ التعديلات: ' + err.message);
+    }
 }
 
-// صلاحية الأدمن كمراجع للبت النهائي (اعتماد نهائي أو إرجاع بملاحظة)
 async function adminDecideGroup(decision) {
     const targetExam = adminEditingExam || getDefaultInspectExamKey();
     if (!adminEditingGroup || !targetExam || targetExam === 'none') return;
+
+    const maxScore = getExamMaxScore(targetExam);
+    if (!validateScoreInputs('.admin-exam-inp', maxScore) || !validateScoreInputs('.admin-ahkam-inp', 100)) return;
 
     const note = document.getElementById('adminModalNoteInp').value.trim();
     if (decision === 'returned' && !note) {
@@ -2404,37 +2859,179 @@ async function adminDecideGroup(decision) {
     }
 
     if (decision === 'approved') {
-        if (!confirm(`هل تؤكد البت النهائي واعتماد درجات مجموعة (${adminEditingGroup})؟\nهذا الاعتماد نهائي ويغلق التعديل على المعلمين.`)) {
+        if (!confirm(`هل تؤكد البت النهائي واعتماد درجات مجموعة (${adminEditingGroup})؟
+هذا الاعتماد نهائي ويغلق التعديل على المعلمين.`)) {
             return;
         }
     }
 
-    applyAdminModalInputsToState();
+    const changedIds = applyAdminModalInputsToState();
+    const subKey = `${targetExam}_${adminEditingGroup}`;
     const sub = getSubmissionRecord(targetExam, adminEditingGroup);
     sub.status = decision;
     sub.note = decision === 'returned' ? note : '';
     sub.updated_at = new Date().toLocaleString('ar-EG');
     sub.decided_by = currentUser ? currentUser.name : 'الإدارة';
 
-    await saveState();
-    renderAdminGroups();
-    renderAdminReports();
-    alert(decision === 'approved'
-        ? `تم الاعتماد النهائي والبت في مجموعة (${adminEditingGroup}) بنجاح ✔`
-        : `تم إرجاع مجموعة (${adminEditingGroup}) للمعلم للتعديل ↩`);
-    closeAdminModal();
+    try {
+        await saveState({ syncSplit: true, changedStudentIds: changedIds, changedSubmissionKeys: [subKey] });
+        renderAdminGroups();
+        renderAdminReports();
+        showToast(decision === 'approved' ? `تم اعتماد (${adminEditingGroup}) نهائياً` : `تم إرجاع (${adminEditingGroup}) للتعديل`, 'success');
+        closeAdminModal();
+    } catch (err) {
+        alert('تعذر حفظ القرار: ' + err.message);
+    }
 }
 
 async function adminResetGroupStatus(newStatus) {
     const targetExam = adminEditingExam || getDefaultInspectExamKey();
     if (!adminEditingGroup || !targetExam || targetExam === 'none') return;
+    const subKey = `${targetExam}_${adminEditingGroup}`;
     const sub = getSubmissionRecord(targetExam, adminEditingGroup);
     sub.status = newStatus;
-    await saveState();
-    renderAdminGroups();
-    renderAdminReports();
-    alert('تمت إعادة فتح المجموعة للمعلم بنجاح.');
-    closeAdminModal();
+    try {
+        await saveState({ syncSplit: true, changedSubmissionKeys: [subKey] });
+        renderAdminGroups();
+        renderAdminReports();
+        showToast('تمت إعادة فتح المجموعة للمعلم', 'info');
+        closeAdminModal();
+    } catch (err) {
+        alert('تعذر إعادة فتح المجموعة: ' + err.message);
+    }
+}
+
+// ==================== الإحصاء الوصفي وجودة البيانات ====================
+function computeDescriptiveStats(values) {
+    const n = values.length;
+    if (!n) {
+        return { count: 0, mean: null, median: null, sd: null, min: null, max: null, passRate: null };
+    }
+    const sorted = [...values].sort((a, b) => a - b);
+    const sum = sorted.reduce((acc, v) => acc + v, 0);
+    const mean = sum / n;
+    const mid = Math.floor(n / 2);
+    const median = (n % 2 !== 0) ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+    const variance = n > 1
+        ? sorted.reduce((acc, v) => acc + Math.pow(v - mean, 2), 0) / (n - 1)
+        : 0;
+    const sd = Math.sqrt(variance);
+    return {
+        count: n,
+        mean,
+        median,
+        sd,
+        min: sorted[0],
+        max: sorted[n - 1]
+    };
+}
+
+function fmtNum(v, digits = 1) {
+    if (v === null || v === undefined || !Number.isFinite(v)) return '-';
+    return Number(v.toFixed(digits)).toString();
+}
+
+async function updateExamMaxScore(rawMax) {
+    const repSel = document.getElementById('reportsExamSelect');
+    const examKey = repSel ? repSel.value : getDefaultInspectExamKey();
+    if (!examKey || examKey === 'none') return;
+    const num = Number(rawMax);
+    if (!Number.isFinite(num) || num <= 0) {
+        alert('يرجى إدخال نهاية عظمى أكبر من الصفر.');
+        return;
+    }
+    if (!APP_STATE.settings.exam_max_scores) APP_STATE.settings.exam_max_scores = {};
+    APP_STATE.settings.exam_max_scores[examKey] = num;
+    try {
+        await saveState({ syncSplit: true });
+        renderStatisticalSummary(examKey);
+        showToast(`تم تحديث النهاية العظمى للاختبار إلى ${num}`, 'success');
+    } catch (err) {
+        alert('تعذر حفظ النهاية العظمى: ' + err.message);
+    }
+}
+
+function renderStatisticalSummary(examKey) {
+    const metricsGrid = document.getElementById('statsMetricsGrid');
+    const groupsTbody = document.getElementById('statsGroupsTable');
+    const maxInp = document.getElementById('examMaxScoreInp');
+    const badgeEl = document.getElementById('statCompletionBadge');
+    if (!metricsGrid || !groupsTbody) return;
+
+    const maxScore = getExamMaxScore(examKey);
+    if (maxInp && document.activeElement !== maxInp) {
+        maxInp.value = maxScore;
+    }
+
+    const allStudents = APP_STATE.students || [];
+    const allScores = [];
+    let missingCount = 0;
+
+    allStudents.forEach(s => {
+        const val = parseValidScore(s.scores ? s.scores[examKey] : null, maxScore);
+        if (val !== null) allScores.push(val);
+        else missingCount++;
+    });
+
+    const totalSt = allStudents.length;
+    const compPct = totalSt > 0 ? ((allScores.length / totalSt) * 100) : 0;
+    if (badgeEl) {
+        badgeEl.className = `badge ${compPct >= 80 ? 'badge-approved' : (compPct >= 40 ? 'badge-submitted' : 'badge-draft')}`;
+        badgeEl.textContent = `نسبة الرصد: ${fmtNum(compPct, 1)}% (${allScores.length}/${totalSt})`;
+    }
+
+    const ov = computeDescriptiveStats(allScores);
+    const passCutoff = maxScore * 0.5;
+    const passCount = allScores.filter(v => v >= passCutoff).length;
+    const passRate = allScores.length > 0 ? (passCount / allScores.length) * 100 : null;
+
+    metricsGrid.innerHTML = `
+        <div style="background:#fff; border:1px solid #cbd5e1; border-radius:10px; padding:10px;">
+            <div style="font-size:11.5px; color:#475569; font-weight:bold;">المتوسط الحسابي والوسيط</div>
+            <div style="font-size:18px; font-weight:bold; color:#1f4e78; margin-top:4px;">
+                ${fmtNum(ov.mean, 2)} <span style="font-size:12px; color:#64748b;">/ وسيط: ${fmtNum(ov.median, 2)}</span>
+            </div>
+            <div style="font-size:11px; color:#64748b; margin-top:2px;">انحراف معياري: ${fmtNum(ov.sd, 2)}</div>
+        </div>
+        <div style="background:#fff; border:1px solid #cbd5e1; border-radius:10px; padding:10px;">
+            <div style="font-size:11.5px; color:#475569; font-weight:bold;">المدى (أدنى - أعلى درجة)</div>
+            <div style="font-size:18px; font-weight:bold; color:#155e3b; margin-top:4px; direction:ltr; text-align:right;">
+                ${ov.count ? `${fmtNum(ov.min, 1)} — ${fmtNum(ov.max, 1)}` : '-'}
+            </div>
+            <div style="font-size:11px; color:#64748b; margin-top:2px;">النهاية العظمى المعتمدة: ${maxScore}</div>
+        </div>
+        <div style="background:#fff; border:1px solid #cbd5e1; border-radius:10px; padding:10px;">
+            <div style="font-size:11.5px; color:#475569; font-weight:bold;">النجاح (≥50%) والبيانات المفقودة</div>
+            <div style="font-size:18px; font-weight:bold; color:#b45309; margin-top:4px;">
+                ${passRate !== null ? fmtNum(passRate, 1) + '%' : '-'} <span style="font-size:12px; color:#991b1b;">(مفقود: ${missingCount})</span>
+            </div>
+            <div style="font-size:11px; color:#64748b; margin-top:2px;">ناجح: ${passCount} من ${allScores.length} مرصود</div>
+        </div>
+    `;
+
+    const groups = Object.keys(APP_STATE.groups_meta);
+    groupsTbody.innerHTML = groups.map(gName => {
+        const gStudents = getStudentsInGroup(gName);
+        const gScores = [];
+        let gMissing = 0;
+        gStudents.forEach(s => {
+            const val = parseValidScore(s.scores ? s.scores[examKey] : null, maxScore);
+            if (val !== null) gScores.push(val);
+            else gMissing++;
+        });
+        const st = computeDescriptiveStats(gScores);
+        const gPass = gScores.length ? ((gScores.filter(v => v >= passCutoff).length / gScores.length) * 100) : null;
+        return `
+        <tr>
+            <td style="font-weight:bold;">${escapeHtml(gName)}</td>
+            <td>${gScores.length}</td>
+            <td style="color:${gMissing > 0 ? '#991b1b' : '#155e3b'}; font-weight:bold;">${gMissing}</td>
+            <td style="font-weight:bold; color:#1f4e78;">${fmtNum(st.mean, 2)}</td>
+            <td>${fmtNum(st.median, 2)}</td>
+            <td style="direction:ltr;">${st.count ? `${fmtNum(st.min, 1)} / ${fmtNum(st.max, 1)}` : '-'}</td>
+            <td>${gPass !== null ? fmtNum(gPass, 1) + '%' : '-'}</td>
+        </tr>`;
+    }).join('') || '<tr><td colspan="7" style="color:#64748b;">لا توجد بيانات مجموعات.</td></tr>';
 }
 
 // ==================== التقارير وسجل التعديلات ====================
@@ -2444,7 +3041,7 @@ function renderAdminReports() {
     const examsList = APP_STATE.exams || [];
     if (repSel) {
         const prev = repSel.value;
-        repSel.innerHTML = examsList.map(ex => `<option value="${ex.key}">${ex.label}</option>`).join('');
+        repSel.innerHTML = examsList.map(ex => `<option value="${escapeAttr(ex.key)}">${escapeHtml(ex.label)}</option>`).join('');
         if (prev && examsList.some(e => e.key === prev)) {
             repSel.value = prev;
         } else {
@@ -2486,13 +3083,15 @@ function renderAdminReports() {
     const fillSel = (id, placeholder, list) => {
         const el = document.getElementById(id);
         if (!el) return;
-        el.innerHTML = `<option value="">${placeholder} (${list.length})</option>` +
-            list.map(item => `<option value="${item.value}">${item.label}</option>`).join('');
+        el.innerHTML = `<option value="">${escapeHtml(placeholder)} (${list.length})</option>` +
+            list.map(item => `<option value="${escapeAttr(item.value)}">${escapeHtml(item.label)}</option>`).join('');
     };
 
     fillSel('statDraftSelect', '-- اختر مجموعة تحت الرصد للمعاينة --', draftGroups);
     fillSel('statSubmittedSelect', '-- اختر مجموعة مرصودة للمراجعة --', submittedGroups);
     fillSel('statApprovedSelect', '-- اختر مجموعة معتمدة نهائياً --', approvedGroups);
+
+    renderStatisticalSummary(activeExam);
 
     const filterSel = document.getElementById('auditTeacherFilter');
     if (filterSel) {
@@ -2500,7 +3099,7 @@ function renderAdminReports() {
         const logs = APP_STATE.grade_logs || [];
         const uniqueUsers = Array.from(new Set(logs.map(l => l.user_name).filter(Boolean)));
         filterSel.innerHTML = `<option value="ALL">كل المعلمين والمستخدمين</option>` +
-            uniqueUsers.map(u => `<option value="${u}">${u}</option>`).join('');
+            uniqueUsers.map(u => `<option value="${escapeAttr(u)}">${escapeHtml(u)}</option>`).join('');
         if (uniqueUsers.includes(prevVal)) filterSel.value = prevVal;
     }
 
@@ -2525,7 +3124,6 @@ function toggleAuditGroupCard(cardKey) {
     else expandedAuditGroupKeys.add(cardKey);
 }
 
-// عرض سجل التعديلات كأيقونات/بطاقات مجمّعة لكل معلم ومجموعة (بما في ذلك السجلات القديمة المفصلة)
 function renderAuditLogs() {
     const tbody = document.getElementById('auditLogsTable');
     if (!tbody) return;
@@ -2537,7 +3135,6 @@ function renderAuditLogs() {
         return;
     }
 
-    // تجميع كافة السجلات (المجمّعة والقديمة الفردية) في أيقونة واحدة لكل (معلم + مجموعة)
     const groupedMap = new Map();
 
     rawLogs.forEach((l) => {
@@ -2595,15 +3192,15 @@ function renderAuditLogs() {
                     const detailsHtml = b.entries.map(en => {
                         const rows = (en.items || []).map(it => `
                             <div style="padding:3px 6px; border-bottom:1px dashed #e2e8f0; display:flex; justify-content:space-between; gap:6px; font-size:11.5px;">
-                                <span><b>${it.student_name}</b> (${it.student_id})</span>
-                                <span style="direction:ltr; font-weight:bold;"><span style="color:#991b1b;">${it.old_val}</span> ➔ <span style="color:#155e3b;">${it.new_val}</span></span>
+                                <span><b>${escapeHtml(it.student_name)}</b> (${escapeHtml(it.student_id)})</span>
+                                <span style="direction:ltr; font-weight:bold;"><span style="color:#991b1b;">${escapeHtml(it.old_val)}</span> ➔ <span style="color:#155e3b;">${escapeHtml(it.new_val)}</span></span>
                             </div>
                         `).join('');
                         return `
                         <div style="margin-bottom:8px; background:#fff; border:1px solid #cbd5e1; border-radius:6px; overflow:hidden;">
                             <div style="background:#eff6ff; padding:4px 8px; font-size:11px; font-weight:bold; color:#1f4e78; display:flex; justify-content:space-between;">
-                                <span>${en.exam_label || ''} (${en.action_label})</span>
-                                <span>${en.timestamp}</span>
+                                <span>${escapeHtml(en.exam_label || '')} (${escapeHtml(en.action_label)})</span>
+                                <span>${escapeHtml(en.timestamp)}</span>
                             </div>
                             ${rows}
                         </div>`;
@@ -2611,18 +3208,18 @@ function renderAuditLogs() {
 
                     return `
                     <div style="border:1.5px solid ${isOpen ? '#1f4e78' : '#cbd5e1'}; border-radius:10px; background:#f8fafc; overflow:hidden;">
-                        <button type="button" onclick="toggleAuditGroupCard('${safeId}')" style="width:100%; border:none; background:${isOpen ? '#eff6ff' : '#f8fafc'}; padding:10px 12px; cursor:pointer; text-align:right; font-family:inherit; display:flex; flex-direction:column; gap:5px;">
+                        <button type="button" onclick="toggleAuditGroupCard('${escapeAttr(safeId)}')" style="width:100%; border:none; background:${isOpen ? '#eff6ff' : '#f8fafc'}; padding:10px 12px; cursor:pointer; text-align:right; font-family:inherit; display:flex; flex-direction:column; gap:5px;">
                             <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
-                                <span style="font-weight:bold; font-size:13px; color:#1f4e78;">👨‍🏫 ${b.user_name}</span>
+                                <span style="font-weight:bold; font-size:13px; color:#1f4e78;">👨‍🏫 ${escapeHtml(b.user_name)}</span>
                                 <span class="badge badge-approved">${b.total_changes} تعديل</span>
                             </div>
                             <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; color:#334155;">
-                                <span>📚 مجموعة: <b>${b.group}</b></span>
+                                <span>📚 مجموعة: <b>${escapeHtml(b.group)}</b></span>
                                 <span style="font-size:11px; color:#1f4e78; font-weight:bold;">${isOpen ? 'إخفاء ▲' : 'فتح السجل ▼'}</span>
                             </div>
-                            <div style="font-size:10.5px; color:#64748b;">آخر تحديث: ${b.last_timestamp}</div>
+                            <div style="font-size:10.5px; color:#64748b;">آخر تحديث: ${escapeHtml(b.last_timestamp)}</div>
                         </button>
-                        <div id="auditGroupBox_${safeId}" class="${isOpen ? '' : 'hidden'}" style="padding:8px; background:#ffffff; border-top:1px solid #e2e8f0; max-height:240px; overflow-y:auto;">
+                        <div id="auditGroupBox_${escapeAttr(safeId)}" class="${isOpen ? '' : 'hidden'}" style="padding:8px; background:#ffffff; border-top:1px solid #e2e8f0; max-height:240px; overflow-y:auto;">
                             ${detailsHtml}
                         </div>
                     </div>`;
@@ -2643,7 +3240,7 @@ function renderLoginActivityLogs() {
         const prev = filterSel.value || 'ALL';
         const names = Array.from(new Set(allLogs.map(x => x.user_name).filter(Boolean)));
         filterSel.innerHTML = `<option value="ALL">كل المستخدمين (${allLogs.length})</option>` +
-            names.map(n => `<option value="${n}">${n}</option>`).join('');
+            names.map(n => `<option value="${escapeAttr(n)}">${escapeHtml(n)}</option>`).join('');
         if (names.includes(prev)) filterSel.value = prev;
     }
 
@@ -2659,11 +3256,11 @@ function renderLoginActivityLogs() {
         const devs = Array.isArray(x.devices) ? x.devices.join(' | ') : (x.device || '-');
         return `
         <tr>
-            <td style="font-family:monospace; font-weight:bold;">${x.day}</td>
-            <td style="font-weight:bold; color:#1f4e78;">${x.user_name} <small style="color:#64748b;">(${x.user_code})</small></td>
-            <td><span class="badge badge-approved">${x.count || 1} مرة</span></td>
-            <td style="font-size:12px;">${devs}</td>
-            <td style="font-size:11.5px;">${x.first_time || '-'} ➔ ${x.last_time || '-'}</td>
+            <td style="font-family:monospace; font-weight:bold;">${escapeHtml(x.day)}</td>
+            <td style="font-weight:bold; color:#1f4e78;">${escapeHtml(x.user_name)} <small style="color:#64748b;">(${escapeHtml(x.user_code)})</small></td>
+            <td><span class="badge badge-approved">${Number(x.count) || 1} مرة</span></td>
+            <td style="font-size:12px;">${escapeHtml(devs)}</td>
+            <td style="font-size:11.5px;">${escapeHtml(x.first_time || '-')} ➔ ${escapeHtml(x.last_time || '-')}</td>
         </tr>`;
     }).join('');
 }
@@ -2678,17 +3275,17 @@ function renderTransferLogs() {
     }
     tbody.innerHTML = logs.map(t => `
         <tr>
-            <td style="font-size:11.5px;">${t.timestamp}</td>
-            <td style="font-weight:bold;">${t.student_name} (${t.student_id})</td>
-            <td style="color:#991b1b;">${t.from_group}</td>
-            <td style="color:#155e3b; font-weight:bold;">${t.to_group}</td>
-            <td>${t.by_user}</td>
-            <td>${t.reason || '-'}</td>
+            <td style="font-size:11.5px;">${escapeHtml(t.timestamp)}</td>
+            <td style="font-weight:bold;">${escapeHtml(t.student_name)} (${escapeHtml(t.student_id)})</td>
+            <td style="color:#991b1b;">${escapeHtml(t.from_group)}</td>
+            <td style="color:#155e3b; font-weight:bold;">${escapeHtml(t.to_group)}</td>
+            <td>${escapeHtml(t.by_user)}</td>
+            <td>${escapeHtml(t.reason || '-')}</td>
         </tr>
     `).join('');
 }
 
-// ==================== نقل طالب بين المجموعات (للمراجعين والأدمن فقط) ====================
+// ==================== نقل طالب بين المجموعات ====================
 function canCurrentUserTransferStudents() {
     if (!currentUser) return false;
     return currentUser.role === 'admin' ||
@@ -2709,7 +3306,7 @@ function openTransferStudentModal() {
     const allGroups = Object.keys(APP_STATE.groups_meta);
     grpSel.innerHTML = allGroups.map(g => {
         const tch = APP_STATE.groups_meta[g]?.teacher || 'بدون معلم';
-        return `<option value="${g}">${g} (الشيخ/ ${tch})</option>`;
+        return `<option value="${escapeAttr(g)}">${escapeHtml(g)} (الشيخ/ ${escapeHtml(tch)})</option>`;
     }).join('');
 
     filterTransferStudentsList();
@@ -2725,12 +3322,12 @@ function closeTransferStudentModal() {
 function filterTransferStudentsList() {
     const q = document.getElementById('transferSearchInp').value.trim();
     const sel = document.getElementById('transferStudentSelect');
-    const filtered = APP_STATE.students.filter(s =>
+    const filtered = (APP_STATE.students || []).filter(s =>
         !q || String(s.name).includes(q) || String(s.student_id).includes(q) || String(s.group).includes(q)
     );
 
     sel.innerHTML = filtered.map(s =>
-        `<option value="${s.student_id}">${s.name} — [كود: ${s.student_id}] (${s.group})</option>`
+        `<option value="${escapeAttr(s.student_id)}">${escapeHtml(s.name)} — [كود: ${escapeHtml(s.student_id)}] (${escapeHtml(s.group)})</option>`
     ).join('');
 
     onTransferStudentSelected();
@@ -2738,7 +3335,7 @@ function filterTransferStudentsList() {
 
 function onTransferStudentSelected() {
     const sid = document.getElementById('transferStudentSelect').value;
-    const st = APP_STATE.students.find(s => String(s.student_id) === String(sid));
+    const st = findStudentById(sid);
     const infoEl = document.getElementById('transferCurrentInfo');
     const histEl = document.getElementById('studentHistoryContent');
 
@@ -2748,14 +3345,14 @@ function onTransferStudentSelected() {
         return;
     }
 
-    infoEl.innerHTML = `الطالب المحدد: <b>${st.name}</b> (كود: ${st.student_id}) — المجموعة الحالية: <b>${st.group}</b> — المعلم الحالي: <b>الشيخ/ ${st.teacher || '-'}</b>`;
+    infoEl.innerHTML = `الطالب المحدد: <b>${escapeHtml(st.name)}</b> (كود: ${escapeHtml(st.student_id)}) — المجموعة الحالية: <b>${escapeHtml(st.group)}</b> — المعلم الحالي: <b>الشيخ/ ${escapeHtml(st.teacher || '-')}</b>`;
 
     const history = Array.isArray(st.transfer_history) ? st.transfer_history : [];
     if (!history.length) {
         histEl.textContent = 'لم يتم نقل هذا الطالب من قبل.';
     } else {
         histEl.innerHTML = history.map(h =>
-            `<div style="padding:4px 0; border-bottom:1px dashed #e2e8f0;">• بتاريخ <b>${h.timestamp}</b>: نُقل من <b>(${h.from_group})</b> إلى <b>(${h.to_group})</b> بواسطة <b>${h.by_user}</b> ${h.reason ? `— السبب: ${h.reason}` : ''}</div>`
+            `<div style="padding:4px 0; border-bottom:1px dashed #e2e8f0;">• بتاريخ <b>${escapeHtml(h.timestamp)}</b>: نُقل من <b>(${escapeHtml(h.from_group)})</b> إلى <b>(${escapeHtml(h.to_group)})</b> بواسطة <b>${escapeHtml(h.by_user)}</b> ${h.reason ? `— السبب: ${escapeHtml(h.reason)}` : ''}</div>`
         ).join('');
     }
 }
@@ -2769,7 +3366,7 @@ async function executeStudentTransfer() {
     const targetGroup = document.getElementById('transferTargetGroupSelect').value;
     const reason = document.getElementById('transferReasonInp').value.trim();
 
-    const st = APP_STATE.students.find(s => String(s.student_id) === String(sid));
+    const st = findStudentById(sid);
     if (!st) {
         alert('يرجى اختيار الطالب أولاً!');
         return;
@@ -2799,7 +3396,6 @@ async function executeStudentTransfer() {
         reason: reason
     };
 
-    // تحديث بيانات الطالب وحفظ سجل التعديلات داخل سجل الطالب وفي السجل العام
     st.group = targetGroup;
     st.group_num = targetMeta.group_num || st.group_num;
     st.teacher = newTeacher;
@@ -2809,31 +3405,25 @@ async function executeStudentTransfer() {
     if (!Array.isArray(APP_STATE.transfer_logs)) APP_STATE.transfer_logs = [];
     APP_STATE.transfer_logs.unshift(record);
 
-    await saveState();
-    onTransferStudentSelected();
-    if (!document.getElementById('viewAdmin').classList.contains('hidden')) {
-        renderAdminGroups();
-        renderAdminReports();
+    try {
+        await saveState({ syncSplit: true, changedStudentIds: [st.student_id] });
+        onTransferStudentSelected();
+        if (!document.getElementById('viewAdmin').classList.contains('hidden')) {
+            renderAdminGroups();
+            renderAdminReports();
+        }
+        if (!document.getElementById('viewReviewer').classList.contains('hidden')) {
+            renderReviewerGroups();
+        }
+        showToast(`تم نقل (${st.name}) إلى (${targetGroup})`, 'success');
+    } catch (err) {
+        alert('تعذر حفظ عملية النقل: ' + err.message);
     }
-    if (!document.getElementById('viewReviewer').classList.contains('hidden')) {
-        renderReviewerGroups();
-    }
-    alert(`تم نقل الطالب (${st.name}) إلى مجموعة (${targetGroup}) وحفظ سجل التعديلات بنجاح ✔`);
 }
 
-// ==================== إضافة طالب جديد (مع ضمان تفرد كود الطالب 100%) ====================
-function normalizeStudentId(raw) {
-    return String(raw ?? '').trim().toUpperCase();
-}
-
-function findStudentById(sid) {
-    const target = normalizeStudentId(sid);
-    if (!target) return null;
-    return APP_STATE.students.find(s => normalizeStudentId(s.student_id) === target) || null;
-}
-
+// ==================== إضافة طالب جديد ====================
 function generateNextStudentId() {
-    const existingIds = new Set(APP_STATE.students.map(s => normalizeStudentId(s.student_id)));
+    const existingIds = new Set((APP_STATE.students || []).map(s => normalizeStudentId(s.student_id)));
     (APP_STATE.transfer_logs || []).forEach(t => {
         if (t.student_id) existingIds.add(normalizeStudentId(t.student_id));
     });
@@ -2900,7 +3490,7 @@ async function openAddStudentModal() {
     }
     grpSel.innerHTML = allGroups.map(g => {
         const tch = APP_STATE.groups_meta[g]?.teacher || 'بدون معلم';
-        return `<option value="${g}">${g} (الشيخ/ ${tch})</option>`;
+        return `<option value="${escapeAttr(g)}">${escapeHtml(g)} (الشيخ/ ${escapeHtml(tch)})</option>`;
     }).join('');
 
     onNewStudentGroupChanged();
@@ -2916,14 +3506,15 @@ function closeAddStudentModal() {
 function onNewStudentGroupChanged() {
     const gName = document.getElementById('newStGroupSelect').value;
     const meta = APP_STATE.groups_meta[gName] || {};
-    const sampleSt = APP_STATE.students.find(s => s.group === gName);
+    const grpList = getStudentsInGroup(gName);
+    const sampleSt = grpList.length ? grpList[0] : null;
     if (sampleSt) {
         document.getElementById('newStLevelInp').value = sampleSt.level || '';
         document.getElementById('newStSectionInp').value = sampleSt.section || '';
     }
     const infoEl = document.getElementById('newStGroupInfo');
     if (infoEl) {
-        infoEl.innerHTML = `سيُضاف الطالب إلى مجموعة <b>(${gName})</b> — معلم المجموعة: <b>الشيخ/ ${meta.teacher || 'غير محدد'}</b> — امتحان أحكام: <b>${meta.has_ahkam ? 'نعم' : 'لا'}</b>`;
+        infoEl.innerHTML = `سيُضاف الطالب إلى مجموعة <b>(${escapeHtml(gName)})</b> — معلم المجموعة: <b>الشيخ/ ${escapeHtml(meta.teacher || 'غير محدد')}</b> — امتحان أحكام: <b>${meta.has_ahkam ? 'نعم' : 'لا'}</b>`;
     }
 }
 
@@ -2947,8 +3538,10 @@ async function executeAddNewStudent() {
         return;
     }
 
-    // مزامنة فورية مع السحابة قبل الحفظ لمنع أي تكرار متزامن من جهاز آخر
-    await loadState();
+    try {
+        await loadState(true);
+    } catch (e) {}
+
     const duplicateSt = findStudentById(sid);
     if (duplicateSt) {
         validateNewStudentIdLive();
@@ -2977,7 +3570,6 @@ ${duplicateSt.name} — مجموعة (${duplicateSt.group})
 
     APP_STATE.students.push(newStudent);
 
-    // تسجيل الإضافة في سجل التنقلات/الحركات للمتابعة
     if (!Array.isArray(APP_STATE.transfer_logs)) APP_STATE.transfer_logs = [];
     APP_STATE.transfer_logs.unshift({
         timestamp: new Date().toLocaleString('ar-EG'),
@@ -2989,17 +3581,21 @@ ${duplicateSt.name} — مجموعة (${duplicateSt.group})
         reason: 'إضافة طالب جديد للمنظومة'
     });
 
-    await saveState();
-    closeAddStudentModal();
+    try {
+        await saveState({ syncSplit: true, changedStudentIds: [sid] });
+        closeAddStudentModal();
 
-    if (!document.getElementById('viewAdmin').classList.contains('hidden')) {
-        renderAdminGroups();
-        renderAdminReports();
+        if (!document.getElementById('viewAdmin').classList.contains('hidden')) {
+            renderAdminGroups();
+            renderAdminReports();
+        }
+        if (!document.getElementById('viewReviewer').classList.contains('hidden')) {
+            renderReviewerGroups();
+        }
+        showToast(`تمت إضافة الطالب (${name}) بكود (${sid})`, 'success');
+    } catch (err) {
+        alert('تعذر حفظ الطالب الجديد: ' + err.message);
     }
-    if (!document.getElementById('viewReviewer').classList.contains('hidden')) {
-        renderReviewerGroups();
-    }
-    alert(`تمت إضافة الطالب (${name}) بكود فريد (${sid}) إلى مجموعة (${groupName}) بنجاح ✔`);
 }
 
 // ==================== 4. استيراد وتصدير الإكسيل ====================
@@ -3115,9 +3711,10 @@ function importExcelFile() {
             await saveState();
             renderAdminGroups();
             renderAdminUsers();
-            alert(`تم استيراد (${newStudents.length}) دارساً و (${Object.keys(teacherMap).length}) معلماً بأكواد فريدة بنجاح!`);
+            renderAdminReports();
+            showToast(`تم استيراد (${newStudents.length}) دارساً بنجاح`, 'success');
         } catch (err) {
-            alert('حدث خطأ أثناء قراءة ملف الإكسيل: ' + err.message);
+            alert('حدث خطأ أثناء قراءة أو حفظ ملف الإكسيل: ' + err.message);
         }
     };
     reader.readAsArrayBuffer(fileInput.files[0]);
@@ -3135,9 +3732,9 @@ function exportExcelFile() {
     ];
     const dataRows = [headerRow1, headerRow2];
 
-    APP_STATE.students.forEach(s => {
+    (APP_STATE.students || []).forEach(s => {
         const extraVals = extraExams.map(e => {
-            const v = s.scores[e.key];
+            const v = s.scores ? s.scores[e.key] : '';
             return v !== undefined && v !== '' ? (Number(v) || v) : '';
         });
         dataRows.push([
@@ -3163,6 +3760,7 @@ function exportExcelFile() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'tblStudents');
     XLSX.writeFile(wb, 'المدرسة_كاملة_محدثة.xlsx');
+    showToast('تم تصدير ملف الإكسيل بنجاح', 'success');
 }
 
 // ==================== 5. واجهة المعلم (Teacher) ====================
@@ -3174,7 +3772,7 @@ async function openTeacherView() {
 
     const sel = document.getElementById('teacherGroupSelect');
     const myGroups = currentUser.groups || [];
-    sel.innerHTML = myGroups.map(g => `<option value="${g}">${g}</option>`).join('');
+    sel.innerHTML = myGroups.map(g => `<option value="${escapeAttr(g)}">${escapeHtml(g)}</option>`).join('');
     onTeacherGroupChanged();
 }
 
@@ -3210,7 +3808,7 @@ function onTeacherGroupChanged() {
 
     if (examWrap) examWrap.classList.remove('hidden');
     const prevExam = examSel.value;
-    examSel.innerHTML = allowedExams.map(ex => `<option value="${ex.key}">${ex.label.replace(/\s*\(عمود.*\)/, '')}</option>`).join('');
+    examSel.innerHTML = allowedExams.map(ex => `<option value="${escapeAttr(ex.key)}">${escapeHtml(ex.label.replace(/\s*\(عمود.*\)/, ''))}</option>`).join('');
     if (prevExam && allowedExams.some(e => e.key === prevExam)) {
         examSel.value = prevExam;
     }
@@ -3225,6 +3823,7 @@ function renderTeacherStudents() {
     const activeExam = document.getElementById('teacherExamSelect').value;
     if (!groupName || !activeExam) return;
 
+    const maxScore = getExamMaxScore(activeExam);
     const allowedExams = getAllowedExamsForGroup(groupName);
     document.getElementById('teacherExamBanner').textContent =
         `الاختبارات المتاحة لهذه المجموعة (${allowedExams.length}): ${allowedExams.map(e => getExamLabel(e.key)).join(' + ')}`;
@@ -3235,16 +3834,16 @@ function renderTeacherStudents() {
 
     const statusBanner = document.getElementById('teacherGroupStatusBanner');
     if (sub.status === 'approved') {
-        statusBanner.innerHTML = `<div class="alert-box alert-success"><b>تم اعتماد درجات هذه المجموعة في (${getExamLabel(activeExam)}) نهائياً ✔</b> — لا يمكن التعديل عليها إلا من خلال إدارة المدرسة.</div>`;
+        statusBanner.innerHTML = `<div class="alert-box alert-success"><b>تم اعتماد درجات هذه المجموعة في (${escapeHtml(getExamLabel(activeExam))}) نهائياً ✔</b> — لا يمكن التعديل عليها إلا من خلال إدارة المدرسة.</div>`;
     } else if (sub.status === 'submitted') {
-        statusBanner.innerHTML = `<div class="alert-box alert-warning"><b>تم إرسال درجات (${getExamLabel(activeExam)}) للمراجعة ⏳</b> — التعديل مغلق لحين انتهاء المراجع من الاعتماد.</div>`;
+        statusBanner.innerHTML = `<div class="alert-box alert-warning"><b>تم إرسال درجات (${escapeHtml(getExamLabel(activeExam))}) للمراجعة ⏳</b> — التعديل مغلق لحين انتهاء المراجع من الاعتماد.</div>`;
     } else if (sub.status === 'returned') {
-        statusBanner.innerHTML = `<div class="alert-box alert-danger"><b>تمت إعادة المجموعة من المراجع للتعديل ↩</b><br>ملاحظات المراجع: <u>${sub.note || 'يرجى مراجعة الدرجات'}</u></div>`;
+        statusBanner.innerHTML = `<div class="alert-box alert-danger"><b>تمت إعادة المجموعة من المراجع للتعديل ↩</b><br>ملاحظات المراجع: <u>${escapeHtml(sub.note || 'يرجى مراجعة الدرجات')}</u></div>`;
     } else {
-        statusBanner.innerHTML = `<div class="alert-box alert-info">يرجى إدخال درجات <b>${getExamLabel(activeExam)}</b> ثم الضغط على <b>«إرسال للاعتماد (Submit)»</b>.</div>`;
+        statusBanner.innerHTML = `<div class="alert-box alert-info">يرجى إدخال درجات <b>${escapeHtml(getExamLabel(activeExam))}</b> (الحد الأقصى: <b>${maxScore}</b>) ثم الضغط على <b>«إرسال للاعتماد (Submit)»</b>.</div>`;
     }
 
-    document.getElementById('thExamCol').textContent = `درجة ${getExamLabel(activeExam)}`;
+    document.getElementById('thExamCol').textContent = `درجة ${getExamLabel(activeExam)} (0-${maxScore})`;
     const thAhkam = document.getElementById('thAhkamCol');
     if (meta.has_ahkam) {
         thAhkam.classList.remove('hidden');
@@ -3252,17 +3851,17 @@ function renderTeacherStudents() {
         thAhkam.classList.add('hidden');
     }
 
-    const students = APP_STATE.students.filter(s => s.group === groupName);
+    const students = getStudentsInGroup(groupName);
     document.getElementById('teacherStudentsTable').innerHTML = students.map(s => `
         <tr>
-            <td>${s.student_id}</td>
-            <td style="font-weight:bold;">${s.name}</td>
-            <td>${s.level} / ${s.section}</td>
+            <td>${escapeHtml(s.student_id)}</td>
+            <td style="font-weight:bold;">${escapeHtml(s.name)}</td>
+            <td>${escapeHtml(s.level)} / ${escapeHtml(s.section)}</td>
             <td>
-                <input type="number" step="0.5" min="0" max="100" class="grade-input tch-exam-inp" data-sid="${s.student_id}" value="${s.scores[activeExam] ?? ''}" ${isLocked ? 'disabled' : ''}>
+                <input type="number" step="0.5" min="0" max="${maxScore}" class="grade-input tch-exam-inp" data-sid="${escapeAttr(s.student_id)}" value="${escapeAttr(s.scores[activeExam] ?? '')}" ${isLocked ? 'disabled' : ''}>
             </td>
             <td class="${meta.has_ahkam ? '' : 'hidden'}">
-                <input type="number" step="0.5" min="0" max="100" class="grade-input tch-ahkam-inp" data-sid="${s.student_id}" value="${s.scores.ahkam ?? ''}" ${isLocked ? 'disabled' : ''}>
+                <input type="number" step="0.5" min="0" max="100" class="grade-input tch-ahkam-inp" data-sid="${escapeAttr(s.student_id)}" value="${escapeAttr(s.scores.ahkam ?? '')}" ${isLocked ? 'disabled' : ''}>
             </td>
         </tr>
     `).join('');
@@ -3281,20 +3880,26 @@ async function saveTeacherGrades(isSubmit) {
     const groupName = document.getElementById('teacherGroupSelect').value;
     if (!groupName || !activeExam) return;
 
+    const maxScore = getExamMaxScore(activeExam);
+    if (!validateScoreInputs('.tch-exam-inp', maxScore) || !validateScoreInputs('.tch-ahkam-inp', 100)) return;
+
     if (isSubmit) {
-        const ok = confirm(`هل أنت متأكد من إرسال درجات مجموعة (${groupName}) في (${getExamLabel(activeExam)}) للمراجعة؟\nلن تتمكن من التعديل بعد الإرسال إلا إذا أعادها المراجع.`);
+        const ok = confirm(`هل أنت متأكد من إرسال درجات مجموعة (${groupName}) في (${getExamLabel(activeExam)}) للمراجعة؟
+لن تتمكن من التعديل بعد الإرسال إلا إذا أعادها المراجع.`);
         if (!ok) return;
     }
 
     const examLbl = getExamLabel(activeExam);
     const tchBatchChanges = [];
+    const changedIds = [];
+
     document.querySelectorAll('.tch-exam-inp').forEach(inp => {
-        const sid = inp.dataset.sid;
-        const st = APP_STATE.students.find(s => String(s.student_id) === String(sid));
+        const st = findStudentById(inp.dataset.sid);
         if (st) {
             const oldVal = String(st.scores[activeExam] ?? '').trim();
             const newVal = inp.value.trim();
             if (oldVal !== newVal) {
+                changedIds.push(st.student_id);
                 tchBatchChanges.push({
                     student_name: st.name,
                     student_id: st.student_id,
@@ -3308,12 +3913,12 @@ async function saveTeacherGrades(isSubmit) {
     });
 
     document.querySelectorAll('.tch-ahkam-inp').forEach(inp => {
-        const sid = inp.dataset.sid;
-        const st = APP_STATE.students.find(s => String(s.student_id) === String(sid));
+        const st = findStudentById(inp.dataset.sid);
         if (st) {
             const oldVal = String(st.scores.ahkam ?? '').trim();
             const newVal = inp.value.trim();
             if (oldVal !== newVal) {
+                if (!changedIds.includes(st.student_id)) changedIds.push(st.student_id);
                 tchBatchChanges.push({
                     student_name: st.name,
                     student_id: st.student_id,
@@ -3330,13 +3935,18 @@ async function saveTeacherGrades(isSubmit) {
         appendBatchGradeLog(groupName, examLbl, tchBatchChanges, isSubmit ? 'إرسال للاعتماد' : 'حفظ مسودة');
     }
 
+    const subKey = `${activeExam}_${groupName}`;
     const sub = getSubmissionRecord(activeExam, groupName);
     sub.status = isSubmit ? 'submitted' : 'draft';
     sub.updated_at = new Date().toLocaleString('ar-EG');
 
-    await saveState();
-    onTeacherGroupChanged();
-    alert(isSubmit ? 'تم إرسال الدرجات للمراجع بنجاح!' : 'تم حفظ المسودة بنجاح.');
+    try {
+        await saveState({ syncSplit: true, changedStudentIds: changedIds, changedSubmissionKeys: [subKey] });
+        onTeacherGroupChanged();
+        showToast(isSubmit ? 'تم إرسال الدرجات للمراجع بنجاح' : 'تم حفظ المسودة بنجاح', 'success');
+    } catch (err) {
+        alert('تعذر حفظ الدرجات: ' + err.message);
+    }
 }
 
 function notifyReviewerWhatsApp() {
@@ -3373,7 +3983,7 @@ function openReviewerView() {
         const prev = revExamSel.value;
         revExamSel.innerHTML = examsList.map(ex => {
             const isOpen = APP_STATE.settings.exam_rules[ex.key]?.enabled;
-            return `<option value="${ex.key}">${ex.label.replace(/\s*\(عمود.*\)/, '')} ${isOpen ? '(مفتوح)' : ''}</option>`;
+            return `<option value="${escapeAttr(ex.key)}">${escapeHtml(ex.label.replace(/\s*\(عمود.*\)/, ''))} ${isOpen ? '(مفتوح)' : ''}</option>`;
         }).join('');
         if (prev && examsList.some(e => e.key === prev)) {
             revExamSel.value = prev;
@@ -3411,22 +4021,22 @@ function renderReviewerGroups() {
     });
 
     if (!submittedGroups.length) {
-        container.innerHTML = `<div class="card alert-box alert-info">لا توجد مجموعات مرسلة من المعلمين للمراجعة حتى الآن في (${getExamLabel(activeExam)}).</div>`;
+        container.innerHTML = `<div class="card alert-box alert-info">لا توجد مجموعات مرسلة من المعلمين للمراجعة حتى الآن في (${escapeHtml(getExamLabel(activeExam))}).</div>`;
         return;
     }
 
     container.innerHTML = submittedGroups.map((gName, idx) => {
         const meta = APP_STATE.groups_meta[gName];
         const sub = getSubmissionRecord(activeExam, gName);
-        const students = APP_STATE.students.filter(s => s.group === gName);
+        const students = getStudentsInGroup(gName);
         const isApproved = sub.status === 'approved';
 
         const rowsHtml = students.map(s => `
             <tr>
-                <td>${s.student_id}</td>
-                <td style="font-weight:bold;">${s.name}</td>
-                <td style="font-weight:bold; color:#1f4e78;">${s.scores[activeExam] || '-'}</td>
-                ${meta.has_ahkam ? `<td style="font-weight:bold; color:#3730a3;">${s.scores.ahkam || '-'}</td>` : ''}
+                <td>${escapeHtml(s.student_id)}</td>
+                <td style="font-weight:bold;">${escapeHtml(s.name)}</td>
+                <td style="font-weight:bold; color:#1f4e78;">${escapeHtml(s.scores[activeExam] || '-')}</td>
+                ${meta.has_ahkam ? `<td style="font-weight:bold; color:#3730a3;">${escapeHtml(s.scores.ahkam || '-')}</td>` : ''}
             </tr>
         `).join('');
 
@@ -3434,8 +4044,8 @@ function renderReviewerGroups() {
         <div class="card">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
                 <div>
-                    <h4 style="margin:0; color:#1f4e78;">مجموعة: ${gName} (المعلم: ${meta.teacher})</h4>
-                    <small style="color:#64748b;">تاريخ الإرسال: ${sub.updated_at || '-'}</small>
+                    <h4 style="margin:0; color:#1f4e78;">مجموعة: ${escapeHtml(gName)} (المعلم: ${escapeHtml(meta.teacher)})</h4>
+                    <small style="color:#64748b;">تاريخ الإرسال: ${escapeHtml(sub.updated_at || '-')}</small>
                 </div>
                 <div>${getStatusBadge(sub.status)}</div>
             </div>
@@ -3446,7 +4056,7 @@ function renderReviewerGroups() {
                         <tr>
                             <th>كود</th>
                             <th>اسم الدارس</th>
-                            <th>درجة ${getExamLabel(activeExam)}</th>
+                            <th>درجة ${escapeHtml(getExamLabel(activeExam))}</th>
                             ${meta.has_ahkam ? '<th>درجة الأحكام</th>' : ''}
                         </tr>
                     </thead>
@@ -3459,8 +4069,8 @@ function renderReviewerGroups() {
                 <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:6px;">ملاحظات المراجع (تُكتب في حالة إعادة المجموعة للمعلم):</label>
                 <input type="text" id="revNote_${idx}" class="input-field" style="margin-bottom:10px;" placeholder="اكتب ملاحظاتك هنا إذا وجدت خطأ في الرصد...">
                 <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                    <button class="btn btn-success" onclick="reviewerApprove('${gName}')">اعتماد نهائي وحفظ ✔</button>
-                    <button class="btn btn-danger" onclick="reviewerReturn('${gName}', 'revNote_${idx}')">إعادة للمعلم للتعديل ↩</button>
+                    <button class="btn btn-success" onclick="reviewerApprove('${escapeAttr(gName)}')">اعتماد نهائي وحفظ ✔</button>
+                    <button class="btn btn-danger" onclick="reviewerReturn('${escapeAttr(gName)}', 'revNote_${idx}')">إعادة للمعلم للتعديل ↩</button>
                 </div>
             </div>
             ` : `
@@ -3474,16 +4084,22 @@ function renderReviewerGroups() {
 
 async function reviewerApprove(groupName) {
     const activeExam = document.getElementById('reviewerExamSelect')?.value || getDefaultInspectExamKey();
-    if (!confirm(`هل تؤكد الاعتماد النهائي لدرجات مجموعة (${groupName}) في (${getExamLabel(activeExam)})؟\nبعد الاعتماد لا يمكن التعديل إلا من خلال المدير.`)) return;
+    if (!confirm(`هل تؤكد الاعتماد النهائي لدرجات مجموعة (${groupName}) في (${getExamLabel(activeExam)})؟
+بعد الاعتماد لا يمكن التعديل إلا من خلال المدير.`)) return;
 
+    const subKey = `${activeExam}_${groupName}`;
     const sub = getSubmissionRecord(activeExam, groupName);
     sub.status = 'approved';
     sub.note = '';
     sub.updated_at = new Date().toLocaleString('ar-EG');
 
-    await saveState();
-    renderReviewerGroups();
-    alert('تم اعتماد المجموعة وحفظها نهائياً!');
+    try {
+        await saveState({ syncSplit: true, changedSubmissionKeys: [subKey] });
+        renderReviewerGroups();
+        showToast(`تم اعتماد مجموعة (${groupName}) نهائياً`, 'success');
+    } catch (err) {
+        alert('تعذر حفظ الاعتماد: ' + err.message);
+    }
 }
 
 async function reviewerReturn(groupName, noteInputId) {
@@ -3494,23 +4110,32 @@ async function reviewerReturn(groupName, noteInputId) {
         return;
     }
 
+    const subKey = `${activeExam}_${groupName}`;
     const sub = getSubmissionRecord(activeExam, groupName);
     sub.status = 'returned';
     sub.note = note;
     sub.updated_at = new Date().toLocaleString('ar-EG');
 
-    await saveState();
-    renderReviewerGroups();
+    try {
+        await saveState({ syncSplit: true, changedSubmissionKeys: [subKey] });
+        renderReviewerGroups();
 
-    const meta = APP_STATE.groups_meta[groupName];
-    const teacherUser = APP_STATE.users.find(u => u.name === meta.teacher && u.role === 'teacher');
-    if (teacherUser && teacherUser.phone) {
-        if (confirm('تمت إعادة المجموعة للمعلم بنجاح.\nهل تود إرسال تنبيه بالملاحظة إلى المعلم عبر واتساب الآن؟')) {
-            const msg = `السلام عليكم الشيخ/ ${teacherUser.name}\nتمت مراجعة درجات مجموعة (${groupName}) في اختبار (${getExamLabel(activeExam)})، ويوجد ملاحظة للتعديل:\n"${note}"\nيرجى الدخول على الرابط لإتمام التعديل.`;
-            openWhatsApp(teacherUser.phone, msg);
+        const meta = APP_STATE.groups_meta[groupName];
+        const teacherUser = APP_STATE.users.find(u => u.name === meta.teacher && u.role === 'teacher');
+        if (teacherUser && teacherUser.phone) {
+            if (confirm('تمت إعادة المجموعة للمعلم بنجاح.
+هل تود إرسال تنبيه بالملاحظة إلى المعلم عبر واتساب الآن؟')) {
+                const msg = `السلام عليكم الشيخ/ ${teacherUser.name}
+تمت مراجعة درجات مجموعة (${groupName}) في اختبار (${getExamLabel(activeExam)})، ويوجد ملاحظة للتعديل:
+"${note}"
+يرجى الدخول على الرابط لإتمام التعديل.`;
+                openWhatsApp(teacherUser.phone, msg);
+            }
+        } else {
+            showToast('تمت إعادة المجموعة للمعلم بنجاح', 'info');
         }
-    } else {
-        alert('تمت إعادة المجموعة للمعلم بنجاح وستظهر له الملاحظة فور دخوله.');
+    } catch (err) {
+        alert('تعذر حفظ الإرجاع: ' + err.message);
     }
 }
 
@@ -3520,8 +4145,17 @@ function openWhatsApp(phone, messageText) {
     if (cleanPhone.startsWith('01') && cleanPhone.length === 11) {
         cleanPhone = '2' + cleanPhone;
     }
-    const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(messageText)}`;
-    window.open(waUrl, '_blank');
+    const waUrl = safeExternalUrl(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(messageText)}`);
+    if (!waUrl) return;
+    window.open(waUrl, '_blank', 'noopener,noreferrer');
+}
+
+function copyRecommendedFirestoreRules() {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(RECOMMENDED_FIRESTORE_RULES)
+            .then(() => showToast('تم نسخ قواعد أمان Firestore', 'success'))
+            .catch(() => showToast('يرجى النسخ يدويًا من المربع', 'info'));
+    }
 }
 
 function saveFirebaseConfig() {
@@ -3549,14 +4183,15 @@ function downloadCloudReadyHtml() {
             /const EMBEDDED_FIREBASE_CONFIG = \{[\s\S]*?\};/,
             `const EMBEDDED_FIREBASE_CONFIG = ${raw};`
         );
-        const blob = new Blob(['<!DOCTYPE html>\n' + updatedHtml], { type: 'text/html;charset=utf-8' });
+        const blob = new Blob(['<!DOCTYPE html>
+' + updatedHtml], { type: 'text/html;charset=utf-8' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
         link.download = 'index.html';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        alert('تم تحميل ملف index.html مدمجاً بالربط السحابي!\nارفعه الآن على Netlify أو Tiiny.host ليعمل على هواتف جميع المعلمين تلقائياً.');
+        showToast('تم تحميل ملف index.html المدمج بالربط السحابي', 'success');
     } catch (e) {
         alert('تأكد من صحة كود JSON الخاص بـ Firebase أولاً.');
     }
@@ -3568,7 +4203,7 @@ function clearFirebaseConfig() {
     location.reload();
 }
 
-// ==================== استوديو الإهداء وشهادات التقدير (النسخة المتكاملة) ====================
+// ==================== استوديو الإهداء وشهادات التقدير ====================
 const BUILTIN_GIFT_TEMPLATES = [
     { id: 'modern_navy_gold', name: 'وسام الشرائط والختم الذهبي (كحلي × ذهبي)', primary: '#13294b', accent: '#c9962b', bg: '#ffffff', style: 'modern_ribbon', bgImage: null },
     { id: 'modern_emerald_gold', name: 'وسام الشرائط والختم الذهبي (زمردي × ذهبي)', primary: '#124734', accent: '#c9962b', bg: '#ffffff', style: 'modern_ribbon', bgImage: null },
@@ -3583,6 +4218,16 @@ let activeGiftLogos = { right: null, left: null };
 let cachedLogoImages = { right: null, left: null };
 let currentPreviewBatchIndex = 0;
 
+function setGiftBatchProgress(visible, text = '', pct = 0) {
+    const wrap = document.getElementById('giftBatchProgressWrap');
+    const txtEl = document.getElementById('giftBatchProgressText');
+    const barEl = document.getElementById('giftBatchProgressBar');
+    if (!wrap) return;
+    wrap.classList.toggle('hidden', !visible);
+    if (txtEl) txtEl.textContent = text;
+    if (barEl) barEl.style.width = `${Math.max(0, Math.min(100, pct))}%`;
+}
+
 function getAllGiftTemplates() {
     const custom = Array.isArray(APP_STATE.gift_templates) ? APP_STATE.gift_templates : [];
     return [...BUILTIN_GIFT_TEMPLATES, ...custom];
@@ -3595,7 +4240,8 @@ function isMainAdminUser() {
 function getSelectedGiftRecipients() {
     const checkedNames = Array.from(document.querySelectorAll('.gift-st-chk:checked')).map(c => c.value.trim()).filter(Boolean);
     const manualRaw = document.getElementById('giftManualNamesInp') ? document.getElementById('giftManualNamesInp').value : '';
-    const manualNames = manualRaw.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+    const manualNames = manualRaw.split(/?
+/).map(s => s.trim()).filter(Boolean);
     const combined = [...checkedNames, ...manualNames];
     return combined.length ? combined : ['اسم الدارس المكرّم'];
 }
@@ -3653,7 +4299,7 @@ function filterGiftStudentsChecklist(query) {
 
 function handleGiftLogoUpload(side, inputEl) {
     if (!inputEl.files || !inputEl.files[0]) return;
-    compressImageToDataUrl(inputEl.files[0], 450, 0.88).then(dataUrl => {
+    compressImageToDataUrl(inputEl.files[0], 280, 0.82).then(dataUrl => {
         activeGiftLogos[side] = dataUrl;
         const img = new Image();
         img.onload = () => {
@@ -3678,8 +4324,12 @@ async function saveCurrentLogosAsSchoolDefault() {
         right: activeGiftLogos.right || null,
         left: activeGiftLogos.left || null
     };
-    await saveState();
-    alert('تم اعتماد الشعارات الحالية كشعارات رسمية تظهر تلقائياً لجميع المعلمين ✔');
+    try {
+        await saveState({ syncSplit: true });
+        showToast('تم اعتماد الشعارات الرسمية بنجاح', 'success');
+    } catch (err) {
+        alert('تعذر حفظ الشعارات (قد يكون حجم الصورة كبيراً): ' + err.message);
+    }
 }
 
 function loadDefaultSchoolLogos() {
@@ -3704,19 +4354,16 @@ async function openGiftStudioModal() {
 
     loadDefaultSchoolLogos();
 
-    // إظهار لوحة إضافة القوالب والشعارات الرسمية للأدمن الرئيسي فقط
     const adminMgr = document.getElementById('adminGiftTemplatesManager');
     if (adminMgr) {
         adminMgr.classList.toggle('hidden', !isMainAdminUser());
         if (isMainAdminUser()) renderAdminCustomTemplatesList();
     }
 
-    // تعبئة قائمة القوالب
     const tplSel = document.getElementById('giftTemplateSelect');
     const allTpls = getAllGiftTemplates();
-    tplSel.innerHTML = allTpls.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+    tplSel.innerHTML = allTpls.map(t => `<option value="${escapeAttr(t.id)}">${escapeHtml(t.name)}</option>`).join('');
 
-    // تعبئة قائمة اختيار الطلاب المتعدد حسب صلاحية المستخدم
     const listBox = document.getElementById('giftStudentsChecklist');
     let availableStudents = APP_STATE.students || [];
     if (currentUser && currentUser.role === 'teacher' && !currentUser.is_admin && !currentUser.is_reviewer) {
@@ -3725,16 +4372,15 @@ async function openGiftStudioModal() {
     }
     listBox.innerHTML = availableStudents.length
         ? availableStudents.map(s => `
-            <label class="gift-st-item" data-name="${s.name}" style="display:flex; align-items:center; justify-content:space-between; gap:6px; padding:4px 6px; border-bottom:1px solid #f1f5f9; font-size:12px; cursor:pointer;">
+            <label class="gift-st-item" data-name="${escapeAttr(s.name)}" style="display:flex; align-items:center; justify-content:space-between; gap:6px; padding:4px 6px; border-bottom:1px solid #f1f5f9; font-size:12px; cursor:pointer;">
                 <span style="display:flex; align-items:center; gap:6px;">
-                    <input type="checkbox" class="gift-st-chk" value="${s.name}" onchange="onGiftRecipientsChanged()">
-                    <b>${s.name}</b>
+                    <input type="checkbox" class="gift-st-chk" value="${escapeAttr(s.name)}" onchange="onGiftRecipientsChanged()">
+                    <b>${escapeHtml(s.name)}</b>
                 </span>
-                <small style="color:#64748b;">${s.group}</small>
+                <small style="color:#64748b;">${escapeHtml(s.group)}</small>
             </label>`).join('')
         : '<div style="padding:6px; color:#64748b; font-size:12px;">لا يوجد طلاب في القائمة — اكتب الاسم يدوياً بالأسفل</div>';
 
-    // تعبئة التوقيع والتاريخ والمدرسة افتراضياً (مع إمكانية تعديلها بالكامل)
     const top2Inp = document.getElementById('giftTopLine2Inp');
     if (top2Inp && APP_STATE.settings && APP_STATE.settings.school_name) {
         top2Inp.value = APP_STATE.settings.school_name;
@@ -3766,9 +4412,7 @@ function setGiftReason(txt) {
     renderGiftCanvas();
 }
 
-// رسم تصميم الشرائط المنحنية والختم الذهبي الفاخر (مطابق للنموذج الاحترافي)
 function drawModernRibbonBackground(ctx, W, H, primary, accent) {
-    // 1. خلفية بيضاء نقية مع خطوط طبوغرافية/موجية خفيفة جداً
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, W, H);
 
@@ -3784,7 +4428,6 @@ function drawModernRibbonBackground(ctx, W, H, primary, accent) {
     }
     ctx.restore();
 
-    // 2. إطار مزدوج أنيق (خارجي كحلي وداخلي ذهبي)
     const m1 = Math.round(Math.min(W, H) * 0.024);
     const m2 = Math.round(Math.min(W, H) * 0.036);
     ctx.strokeStyle = primary;
@@ -3795,10 +4438,7 @@ function drawModernRibbonBackground(ctx, W, H, primary, accent) {
     ctx.lineWidth = Math.max(2.5, Math.round(W * 0.0022));
     ctx.strokeRect(m2, m2, W - m2 * 2, H - m2 * 2);
 
-    // 3. شرائط الزاوية العلوية اليسرى (في النسخة العربية RTL لتترك اليمين للوجو الأول، أو العكس)
-    // نرسم الشرائط في الزاوية العلوية اليسرى + الزاويتين السفليتين بشكل متناغم لا يحجب النصوص ولا الشعارات
     ctx.save();
-    // --- شريط علوي يسار مع تدرج ذهبي وكحلي ---
     const goldGrad1 = ctx.createLinearGradient(0, 0, W * 0.35, H * 0.35);
     goldGrad1.addColorStop(0, '#f3d078');
     goldGrad1.addColorStop(0.5, accent);
@@ -3820,7 +4460,6 @@ function drawModernRibbonBackground(ctx, W, H, primary, accent) {
     ctx.closePath();
     ctx.fill();
 
-    // --- شريط سفلي يمين ---
     const goldGrad2 = ctx.createLinearGradient(W * 0.65, H * 0.65, W, H);
     goldGrad2.addColorStop(0, '#f3d078');
     goldGrad2.addColorStop(0.5, accent);
@@ -3842,7 +4481,6 @@ function drawModernRibbonBackground(ctx, W, H, primary, accent) {
     ctx.closePath();
     ctx.fill();
 
-    // --- شريط سفلي يسار ---
     ctx.fillStyle = goldGrad1;
     ctx.beginPath();
     ctx.moveTo(0, H);
@@ -3859,12 +4497,10 @@ function drawModernRibbonBackground(ctx, W, H, primary, accent) {
     ctx.closePath();
     ctx.fill();
 
-    // 4. رسم الختم الذهبي البارز وشرائطه المتدلية في الزاوية العلوية اليسرى
     const sealX = W * 0.125;
     const sealY = H * 0.145;
     const sealR = Math.round(Math.min(W, H) * 0.068);
 
-    // شرائط متدلية أسفل الختم
     [-1, 1].forEach(dir => {
         ctx.save();
         ctx.translate(sealX + dir * sealR * 0.32, sealY + sealR * 0.65);
@@ -3886,7 +4522,6 @@ function drawModernRibbonBackground(ctx, W, H, primary, accent) {
         ctx.restore();
     });
 
-    // دائرة الختم الذهبية متدرجة الإضاءة
     const medalGrad = ctx.createRadialGradient(sealX - sealR * 0.3, sealY - sealR * 0.3, sealR * 0.1, sealX, sealY, sealR);
     medalGrad.addColorStop(0, '#fff3c4');
     medalGrad.addColorStop(0.45, '#e6b84c');
@@ -3903,7 +4538,6 @@ function drawModernRibbonBackground(ctx, W, H, primary, accent) {
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;
 
-    // حلقة داخلية للختم
     ctx.strokeStyle = '#fff8dc';
     ctx.lineWidth = 3;
     ctx.beginPath();
@@ -3913,7 +4547,6 @@ function drawModernRibbonBackground(ctx, W, H, primary, accent) {
     ctx.restore();
 }
 
-// دالة رسم شهادة لطالب محدد على أي Canvas (للمعاينة أو التصدير الدفعي)
 function drawCertificateOnCanvas(targetCanvas, studentNameOverride) {
     if (!targetCanvas) return;
     const ctx = targetCanvas.getContext('2d');
@@ -3934,7 +4567,7 @@ function drawCertificateOnCanvas(targetCanvas, studentNameOverride) {
     const presenterText = document.getElementById('giftPresenterInp').value.trim();
     const dateText = document.getElementById('giftDateInp').value.trim();
 
-    let W = 1600, H = 1131; // A4 Landscape
+    let W = 1600, H = 1131;
     if (sizeKey === 'fb') { W = 1200; H = 1200; }
     else if (sizeKey === 'status') { W = 1080; H = 1920; }
 
@@ -3946,7 +4579,6 @@ function drawCertificateOnCanvas(targetCanvas, studentNameOverride) {
     const bgImg = tpl.bgImage ? cachedBgImages[tpl.id] : null;
     const isModernRibbon = (!bgImg && tpl.style === 'modern_ribbon');
 
-    // 1. الخلفية والإطار
     if (bgImg) {
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, W, H);
@@ -3992,7 +4624,6 @@ function drawCertificateOnCanvas(targetCanvas, studentNameOverride) {
     const isStatus = (sizeKey === 'status');
     const scaleFactor = isStatus ? 1.02 : (sizeKey === 'fb' ? 0.92 : 1.0);
 
-    // 2. رسم الشعارات (لوجو يمين ولوجو يسار الترويسة)
     const logoBoxSize = Math.round((isStatus ? 130 : 140) * scaleFactor);
     const logoTopY = H * (isStatus ? 0.075 : 0.075);
     const logoMarginX = W * (isStatus ? 0.10 : 0.08);
@@ -4007,9 +4638,8 @@ function drawCertificateOnCanvas(targetCanvas, studentNameOverride) {
     ctx.textAlign = 'center';
     ctx.direction = 'rtl';
 
-    // 3. الترويسة العليا (سطران قابلان للتعديل)
     if (topLine1) {
-        ctx.fillStyle = isModernRibbon ? '#475569' : '#475569';
+        ctx.fillStyle = '#475569';
         ctx.font = `bold ${Math.round(27 * scaleFactor)}px Tahoma, Arial`;
         ctx.fillText(topLine1, W / 2, H * (isStatus ? 0.12 : 0.125));
     }
@@ -4019,14 +4649,12 @@ function drawCertificateOnCanvas(targetCanvas, studentNameOverride) {
         ctx.fillText(topLine2, W / 2, H * (isStatus ? 0.165 : 0.175));
     }
 
-    // 4. عنوان الشهادة (في التصميم العصري يظهر بخط كبير أنيق مع عنوان فرعي ذهبي، وفي الإسلامي بشارة)
     if (titleText) {
         if (isModernRibbon) {
             ctx.fillStyle = tpl.primary;
             ctx.font = `bold ${Math.round(58 * scaleFactor)}px Tahoma, Arial`;
             ctx.fillText(titleText, W / 2, H * (isStatus ? 0.255 : 0.285));
 
-            // خط زخرفي ذهبي رفيع تحت العنوان
             ctx.strokeStyle = tpl.accent;
             ctx.lineWidth = 3;
             ctx.beginPath();
@@ -4054,14 +4682,12 @@ function drawCertificateOnCanvas(targetCanvas, studentNameOverride) {
         }
     }
 
-    // 5. عبارة التقديم (قابلة للتعديل)
     if (introText) {
         ctx.fillStyle = '#334155';
         ctx.font = `bold ${Math.round(31 * scaleFactor)}px Tahoma, Arial`;
         ctx.fillText(introText, W / 2, H * (isStatus ? 0.36 : 0.40));
     }
 
-    // 6. اسم الدارس المكرّم + خط ذهبي أنيق تحته (مطابق للنموذج)
     ctx.fillStyle = isModernRibbon ? tpl.primary : tpl.accent;
     const nameFontSize = studentName.length > 26 ? Math.round(50 * scaleFactor) : Math.round(64 * scaleFactor);
     ctx.font = `bold ${nameFontSize}px Tahoma, Arial`;
@@ -4074,21 +4700,18 @@ function drawCertificateOnCanvas(targetCanvas, studentNameOverride) {
     ctx.lineTo(W * 0.76, H * (isStatus ? 0.48 : 0.54));
     ctx.stroke();
 
-    // 7. سبب التكريم (قابل للتعديل)
     if (reasonText) {
         ctx.fillStyle = '#1e293b';
         ctx.font = `bold ${Math.round(33 * scaleFactor)}px Tahoma, Arial`;
         drawWrappedRtlText(ctx, reasonText, W / 2, H * (isStatus ? 0.55 : 0.615), W * 0.74, Math.round(48 * scaleFactor));
     }
 
-    // 8. الدعاء الختامي (قابل للتعديل)
     if (duaaText) {
         ctx.fillStyle = isModernRibbon ? tpl.accent : tpl.primary;
         ctx.font = `bold ${Math.round(28 * scaleFactor)}px Tahoma, Arial`;
         ctx.fillText(duaaText, W / 2, H * (isStatus ? 0.70 : 0.745));
     }
 
-    // 9. التوقيع والتاريخ في الأسفل مع خطي توقيع أنيقين (مطابق للنموذج)
     const footerY = H * (isStatus ? 0.84 : 0.875);
     const sigLineY = footerY - Math.round(38 * scaleFactor);
 
@@ -4175,87 +4798,106 @@ function drawWrappedRtlText(ctx, text, centerX, startY, maxWidth, lineHeight) {
 function downloadGiftPNG() {
     const recipients = getSelectedGiftRecipients();
     const offCanvas = document.createElement('canvas');
-    recipients.forEach((stName, idx) => {
-        setTimeout(() => {
-            drawCertificateOnCanvas(offCanvas, stName);
-            const link = document.createElement('a');
-            const safeName = stName.replace(/\s+/g, '_');
-            link.download = `شهادة_${safeName}.png`;
-            link.href = offCanvas.toDataURL('image/png', 1.0);
-            link.click();
-        }, idx * 350);
-    });
+    let idx = 0;
+
+    setGiftBatchProgress(true, `جاري تنزيل الصور (0 / ${recipients.length})...`, 0);
+
+    function stepNextPng() {
+        if (idx >= recipients.length) {
+            setGiftBatchProgress(false);
+            showToast(`تم تجهيز تنزيل ${recipients.length} شهادة`, 'success');
+            return;
+        }
+        const stName = recipients[idx];
+        drawCertificateOnCanvas(offCanvas, stName);
+        const link = document.createElement('a');
+        const safeName = stName.replace(/\s+/g, '_');
+        link.download = `شهادة_${safeName}.png`;
+        link.href = offCanvas.toDataURL('image/png', 0.95);
+        link.click();
+        idx++;
+        setGiftBatchProgress(true, `جاري تنزيل الصور (${idx} / ${recipients.length})...`, (idx / recipients.length) * 100);
+        setTimeout(stepNextPng, 260);
+    }
+
+    stepNextPng();
 }
 
-// تصدير شهادة أو عشرات الشهادات دفعة واحدة في ملف PDF واحد (صفحة لكل طالب)
 function downloadGiftPDF() {
     const recipients = getSelectedGiftRecipients();
     const sizeKey = document.getElementById('giftSizeSelect').value || 'print';
     const offCanvas = document.createElement('canvas');
 
-    if (window.jspdf && window.jspdf.jsPDF) {
-        const { jsPDF } = window.jspdf;
-        const orientation = (sizeKey === 'status' || sizeKey === 'fb') ? 'portrait' : 'landscape';
+    if (!(window.jspdf && window.jspdf.jsPDF)) {
+        printGiftCertificate();
+        return;
+    }
 
-        drawCertificateOnCanvas(offCanvas, recipients[0]);
-        const pdf = new jsPDF({
-            orientation: orientation,
-            unit: 'px',
-            format: [offCanvas.width, offCanvas.height]
-        });
+    const { jsPDF } = window.jspdf;
+    const orientation = (sizeKey === 'status' || sizeKey === 'fb') ? 'portrait' : 'landscape';
 
-        recipients.forEach((stName, idx) => {
+    drawCertificateOnCanvas(offCanvas, recipients[0]);
+    const pdf = new jsPDF({
+        orientation: orientation,
+        unit: 'px',
+        format: [offCanvas.width, offCanvas.height]
+    });
+
+    let idx = 0;
+    setGiftBatchProgress(true, `جاري إنشاء ملف PDF (0 / ${recipients.length})...`, 0);
+
+    function processChunk() {
+        const chunkLimit = Math.min(recipients.length, idx + 3);
+        while (idx < chunkLimit) {
             if (idx > 0) {
                 pdf.addPage([offCanvas.width, offCanvas.height], orientation);
             }
-            drawCertificateOnCanvas(offCanvas, stName);
-            const imgData = offCanvas.toDataURL('image/jpeg', 0.95);
+            drawCertificateOnCanvas(offCanvas, recipients[idx]);
+            const imgData = offCanvas.toDataURL('image/jpeg', 0.9);
             pdf.addImage(imgData, 'JPEG', 0, 0, offCanvas.width, offCanvas.height);
-        });
+            idx++;
+        }
 
-        const fileName = recipients.length === 1
-            ? `شهادة_${recipients[0].replace(/\s+/g, '_')}.pdf`
-            : `شهادات_تقدير_عدد_${recipients.length}.pdf`;
-        pdf.save(fileName);
-    } else {
-        printGiftCertificate();
+        const pct = (idx / recipients.length) * 100;
+        setGiftBatchProgress(true, `جاري إنشاء ملف PDF (${idx} / ${recipients.length})...`, pct);
+
+        if (idx < recipients.length) {
+            requestAnimationFrame(processChunk);
+        } else {
+            const fileName = recipients.length === 1
+                ? `شهادة_${recipients[0].replace(/\s+/g, '_')}.pdf`
+                : `شهادات_تقدير_عدد_${recipients.length}.pdf`;
+            pdf.save(fileName);
+            setGiftBatchProgress(false);
+            showToast(`تم حفظ ملف PDF (${recipients.length} شهادة)`, 'success');
+        }
     }
+
+    requestAnimationFrame(processChunk);
 }
 
-// طباعة شهادة واحدة أو كل الشهادات المحددة دفعة واحدة
 function printGiftCertificate() {
     const recipients = getSelectedGiftRecipients();
     const offCanvas = document.createElement('canvas');
     const imagesHtml = recipients.map(stName => {
         drawCertificateOnCanvas(offCanvas, stName);
-        const dataUrl = offCanvas.toDataURL('image/png', 1.0);
-        return `<div class="page"><img src="${dataUrl}"></div>`;
+        const dataUrl = offCanvas.toDataURL('image/jpeg', 0.92);
+        return `<div class="page"><img src="${dataUrl}" alt="${escapeAttr(stName)}"></div>`;
     }).join('');
 
-    const win = window.open('', '_blank');
+    const win = window.open('', '_blank', 'noopener');
     if (!win) {
         alert('يرجى السماح بفتح النوافذ المنبثقة للطباعة!');
         return;
     }
-    win.document.write(`
-        <!DOCTYPE html>
-        <html lang="ar" dir="rtl">
-        <head><title>طباعة شهادات التقدير (${recipients.length})</title>
-        <style>
-            @page { margin: 0; }
-            body { margin: 0; background: #fff; }
-            .page { display: flex; align-items: center; justify-content: center; height: 100vh; page-break-after: always; }
-            .page:last-child { page-break-after: auto; }
-            img { max-width: 100%; max-height: 100vh; object-fit: contain; }
-        </style>
-        </head>
-        <body>
-            ${imagesHtml}
-            <script>window.onload = function() { window.print(); window.close(); };<\/script>
-        </body>
-        </html>
-    `);
+
+    win.document.open();
+    win.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><title>طباعة شهادات التقدير (${recipients.length})</title><style>@page { margin: 0; } body { margin: 0; background: #fff; } .page { display: flex; align-items: center; justify-content: center; height: 100vh; page-break-after: always; } .page:last-child { page-break-after: auto; } img { max-width: 100%; max-height: 100vh; object-fit: contain; }</style></head><body>${imagesHtml}</body></html>`);
     win.document.close();
+    win.focus();
+    setTimeout(() => {
+        win.print();
+    }, 250);
 }
 
 async function shareGiftImage(platform) {
@@ -4289,19 +4931,23 @@ ${reasonText}`;
 
     const link = document.createElement('a');
     link.download = `شهادة_${currentName.replace(/\s+/g, '_')}.png`;
-    link.href = canvas.toDataURL('image/png', 1.0);
+    link.href = canvas.toDataURL('image/png', 0.95);
     link.click();
 
     if (platform === 'whatsapp') {
-        alert('تم تنزيل صورة الشهادة على جهازك ✔\nسيتم فتح واتساب الآن لإرسالها في المحادثة أو رفعها كـ «حالة».');
-        window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank');
+        alert('تم تنزيل صورة الشهادة على جهازك ✔
+سيتم فتح واتساب الآن لإرسالها في المحادثة أو رفعها كـ «حالة».');
+        const targetUrl = safeExternalUrl(`https://wa.me/?text=${encodeURIComponent(shareText)}`);
+        if (targetUrl) window.open(targetUrl, '_blank', 'noopener,noreferrer');
     } else {
-        alert('تم تنزيل صورة الشهادة على جهازك ✔\nسيتم فتح فيسبوك الآن لنشر الصورة وتهنئة الدارس.');
-        window.open('https://www.facebook.com/', '_blank');
+        alert('تم تنزيل صورة الشهادة على جهازك ✔
+سيتم فتح فيسبوك الآن لنشر الصورة وتهنئة الدارس.');
+        const fbUrl = safeExternalUrl('https://www.facebook.com/');
+        if (fbUrl) window.open(fbUrl, '_blank', 'noopener,noreferrer');
     }
 }
 
-// ==================== إدارة قوالب الشهادات (صلاحية المدير الرئيسي فقط) ====================
+// ==================== إدارة قوالب الشهادات ====================
 async function saveNewAdminGiftTemplate() {
     if (!isMainAdminUser()) {
         alert('عذراً، إضافة القوالب الجديدة متاحة للمدير العام فقط!');
@@ -4319,7 +4965,7 @@ async function saveNewAdminGiftTemplate() {
 
     let bgImageDataUrl = null;
     if (fileInput.files && fileInput.files[0]) {
-        bgImageDataUrl = await compressImageToDataUrl(fileInput.files[0], 1100, 0.78);
+        bgImageDataUrl = await compressImageToDataUrl(fileInput.files[0], 850, 0.72);
     }
 
     if (!Array.isArray(APP_STATE.gift_templates)) APP_STATE.gift_templates = [];
@@ -4333,18 +4979,22 @@ async function saveNewAdminGiftTemplate() {
     };
 
     APP_STATE.gift_templates.push(newTpl);
-    await saveState();
+    try {
+        await saveState({ syncSplit: true });
+        document.getElementById('gtNewName').value = '';
+        fileInput.value = '';
 
-    document.getElementById('gtNewName').value = '';
-    fileInput.value = '';
+        const tplSel = document.getElementById('giftTemplateSelect');
+        tplSel.innerHTML = getAllGiftTemplates().map(t => `<option value="${escapeAttr(t.id)}">${escapeHtml(t.name)}</option>`).join('');
+        tplSel.value = newTpl.id;
 
-    const tplSel = document.getElementById('giftTemplateSelect');
-    tplSel.innerHTML = getAllGiftTemplates().map(t => `<option value="${t.id}">${t.name}</option>`).join('');
-    tplSel.value = newTpl.id;
-
-    renderAdminCustomTemplatesList();
-    renderGiftCanvas();
-    alert(`تم حفظ القالب الجديد (${name}) وإتاحته لجميع المعلمين بنجاح ✔`);
+        renderAdminCustomTemplatesList();
+        renderGiftCanvas();
+        showToast(`تم حفظ القالب الجديد (${name})`, 'success');
+    } catch (err) {
+        APP_STATE.gift_templates.pop();
+        alert('تعذر حفظ القالب (قد يكون حجم الصورة كبيراً): ' + err.message);
+    }
 }
 
 function compressImageToDataUrl(file, maxDim, quality) {
@@ -4377,7 +5027,7 @@ function renderAdminCustomTemplatesList() {
     box.innerHTML = `<div style="font-size:12px; font-weight:bold; margin-bottom:4px; color:#1f4e78;">القوالب المخصصة المضافة بواسطتك:</div>` +
         custom.map((t, idx) => `
             <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 8px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; margin-bottom:4px; font-size:12px;">
-                <span><b>${t.name}</b> ${t.bgImage ? '(بخلفية مخصصة)' : '(زخرفة ملونة)'}</span>
+                <span><b>${escapeHtml(t.name)}</b> ${t.bgImage ? '(بخلفية مخصصة)' : '(زخرفة ملونة)'}</span>
                 <button type="button" class="btn btn-danger btn-sm" style="padding:3px 8px; font-size:11px;" onclick="deleteAdminGiftTemplate(${idx})">حذف</button>
             </div>
         `).join('');
@@ -4387,11 +5037,16 @@ async function deleteAdminGiftTemplate(idx) {
     if (!isMainAdminUser()) return;
     if (!confirm('هل تريد حذف هذا القالب المخصص؟')) return;
     APP_STATE.gift_templates.splice(idx, 1);
-    await saveState();
-    const tplSel = document.getElementById('giftTemplateSelect');
-    tplSel.innerHTML = getAllGiftTemplates().map(t => `<option value="${t.id}">${t.name}</option>`).join('');
-    renderAdminCustomTemplatesList();
-    renderGiftCanvas();
+    try {
+        await saveState({ syncSplit: true });
+        const tplSel = document.getElementById('giftTemplateSelect');
+        tplSel.innerHTML = getAllGiftTemplates().map(t => `<option value="${escapeAttr(t.id)}">${escapeHtml(t.name)}</option>`).join('');
+        renderAdminCustomTemplatesList();
+        renderGiftCanvas();
+        showToast('تم حذف القالب المخصص', 'info');
+    } catch (err) {
+        alert('تعذر حذف القالب: ' + err.message);
+    }
 }
 
 initStorage();
