@@ -1273,9 +1273,69 @@ function initStorage() {
     rebuildStudentIndexes();
 }
 
-// ==================== قاعدة البيانات المحلية وقائمة انتظار مزامنة الدرجات ====================
+// ==================== قاعدة البيانات المحلية + توزيع الامتحانات في شرائح بـ Firestore ====================
 const PENDING_GRADES_STORAGE_KEY = 'alhamd_pending_grades_v1';
 let isFlushingOfflineQueue = false;
+
+// أسماء شرائح الامتحانات في Firestore (لتوزيع المساحة والقراءات/الكتابات لكل امتحان)
+function getExamShardDocIds() {
+    const baseKeys = ['exam_1', 'exam_2', 'exam_3', 'exam_4', 'ahkam'];
+    const dynamicKeys = (APP_STATE.exams || []).map(e => e.key).filter(Boolean);
+    return Array.from(new Set([...baseKeys, ...dynamicKeys]));
+}
+
+function buildExamShardPayload(examKey) {
+    const scoresMap = {};
+    (APP_STATE.students || []).forEach(st => {
+        if (!st || !st.student_id) return;
+        const val = examKey === 'ahkam'
+            ? (st.scores ? st.scores.ahkam : '')
+            : (st.scores ? st.scores[examKey] : '');
+        if (val !== undefined && val !== null && String(val).trim() !== '') {
+            scoresMap[String(st.student_id)] = String(val).trim();
+        }
+    });
+
+    const examSubs = {};
+    Object.entries(APP_STATE.submissions || {}).forEach(([k, v]) => {
+        if (examKey === 'ahkam') {
+            examSubs[k] = v;
+        } else if (k.startsWith(examKey + '_')) {
+            examSubs[k] = v;
+        }
+    });
+
+    return {
+        exam_key: examKey,
+        scores: scoresMap,
+        submissions: examKey === 'ahkam' ? {} : examSubs,
+        updated_at: new Date().toISOString()
+    };
+}
+
+function applyExamShardToState(targetState, examKey, shardData) {
+    if (!targetState || !shardData || !shardData.scores) return;
+    const stMap = new Map((targetState.students || []).map(s => [String(s.student_id), s]));
+    Object.entries(shardData.scores).forEach(([sid, val]) => {
+        const st = stMap.get(String(sid));
+        if (st) {
+            if (!st.scores || typeof st.scores !== 'object') st.scores = {};
+            if (examKey === 'ahkam') {
+                if (!st.scores.ahkam && val !== '') st.scores.ahkam = val;
+            } else {
+                if (!st.scores[examKey] && val !== '') st.scores[examKey] = val;
+            }
+        }
+    });
+    if (examKey !== 'ahkam' && shardData.submissions && typeof shardData.submissions === 'object') {
+        if (!targetState.submissions) targetState.submissions = {};
+        Object.entries(shardData.submissions).forEach(([subKey, subVal]) => {
+            if (!targetState.submissions[subKey] && subVal) {
+                targetState.submissions[subKey] = subVal;
+            }
+        });
+    }
+}
 
 function getPendingGradeQueue() {
     try {
@@ -1304,7 +1364,6 @@ function updatePendingSyncBadgeUI() {
     if (btn) btn.classList.toggle('hidden', q.length === 0);
 }
 
-// حفظ حزمة درجات محلياً في قائمة الانتظار لضمان عدم ضياعها عند انقطاع النت أو فشل المزامنة
 function enqueuePendingGradeSave(payload) {
     const q = getPendingGradeQueue();
     const idx = q.findIndex(item => item.groupName === payload.groupName && item.activeExam === payload.activeExam);
@@ -1316,7 +1375,6 @@ function enqueuePendingGradeSave(payload) {
     setPendingGradeQueue(q);
 }
 
-// دمج أي تغييرات درجات محفوظة محلياً فوق حالة معينة دون حذف الدرجات المدخلة
 function mergePendingGradesOntoState(targetState) {
     const q = getPendingGradeQueue();
     if (!q.length || !targetState) return false;
@@ -1345,7 +1403,6 @@ function mergePendingGradesOntoState(targetState) {
     return true;
 }
 
-// قراءة الحالة السحابية مع دمج أي درجات محلية معلقة لم تتزامن بعد
 async function loadState(forceRefresh = false) {
     const now = Date.now();
     if (!forceRefresh && lastCloudSyncAt > 0 && (now - lastCloudSyncAt) < 2500) {
@@ -1356,72 +1413,27 @@ async function loadState(forceRefresh = false) {
 
     if (useCloud && db && navigator.onLine !== false) {
         try {
-            const cfgSnap = await db.collection('system_config').doc('schema_v2').get().catch(() => null);
-            if (cfgSnap && cfgSnap.exists && cfgSnap.data()?.split_enabled) {
-                useSplitCollections = true;
-                const [sysSnap, grpSnaps, stSnaps, subSnaps] = await Promise.all([
-                    db.collection('system_config').doc('global').get(),
-                    db.collection('groups').get(),
-                    db.collection('students').get(),
-                    db.collection('submissions').get()
-                ]);
-
-                const nextState = normalizeStateShape({ ...APP_STATE });
-                if (sysSnap.exists) {
-                    const sd = sysSnap.data() || {};
-                    if (sd.settings) nextState.settings = sd.settings;
-                    if (Array.isArray(sd.exams) && sd.exams.length) nextState.exams = sd.exams;
-                    if (Array.isArray(sd.users) && sd.users.length) nextState.users = sd.users;
-                    if (Array.isArray(sd.gift_templates)) nextState.gift_templates = sd.gift_templates;
-                    if (sd.gift_logos) nextState.gift_logos = sd.gift_logos;
-                }
-                const nextGroups = {};
-                grpSnaps.forEach(d => {
-                    const gd = d.data() || {};
-                    if (gd.name) {
-                        nextGroups[gd.name] = {
-                            group_num: gd.group_num || '',
-                            teacher: gd.teacher || '',
-                            has_ahkam: Boolean(gd.has_ahkam)
-                        };
-                    }
-                });
-                if (Object.keys(nextGroups).length) nextState.groups_meta = nextGroups;
-
-                const nextStudents = [];
-                stSnaps.forEach(d => nextStudents.push(d.data()));
-                nextState.students = nextStudents;
-
-                const nextSubs = {};
-                subSnaps.forEach(d => {
-                    const subData = d.data() || {};
-                    const subKey = subData.submission_key || d.id;
-                    nextSubs[subKey] = {
-                        status: subData.status || 'draft',
-                        note: subData.note || '',
-                        updated_at: subData.updated_at || '',
-                        decided_by: subData.decided_by || ''
-                    };
-                });
-                nextState.submissions = nextSubs;
-
-                APP_STATE = normalizeStateShape(nextState);
-                mergePendingGradesOntoState(APP_STATE);
-                lastCloudSyncAt = Date.now();
-                try { localStorage.setItem('quran_grades_state', JSON.stringify(APP_STATE)); } catch (e) {}
-                rebuildStudentIndexes();
-                return APP_STATE;
-            }
-
             const doc = await db.collection('quran_system').doc('main_state').get();
             if (doc.exists) {
                 APP_STATE = normalizeStateShape(doc.data());
-                mergePendingGradesOntoState(APP_STATE);
-                lastCloudSyncAt = Date.now();
-                try { localStorage.setItem('quran_grades_state', JSON.stringify(APP_STATE)); } catch (e) {}
             } else {
-                await saveState();
+                await saveState({ localOnly: true });
             }
+
+            // قراءة شرائح الامتحانات المنفصلة ودمجها دون المساس بأي سجل حالي
+            const shardKeys = getExamShardDocIds();
+            const shardSnaps = await Promise.all(
+                shardKeys.map(k => db.collection('quran_system').doc('exam_shard_' + k).get().catch(() => null))
+            );
+            shardSnaps.forEach((snap, i) => {
+                if (snap && snap.exists) {
+                    applyExamShardToState(APP_STATE, shardKeys[i], snap.data());
+                }
+            });
+
+            mergePendingGradesOntoState(APP_STATE);
+            lastCloudSyncAt = Date.now();
+            try { localStorage.setItem('quran_grades_state', JSON.stringify(APP_STATE)); } catch (e) {}
         } catch (cloudErr) {
             const localData = localStorage.getItem('quran_grades_state');
             if (localData) {
@@ -1440,7 +1452,6 @@ async function loadState(forceRefresh = false) {
     return APP_STATE;
 }
 
-// حفظ الحالة محلياً دائماً، ومزامنتها سحابياً عند توفر الاتصال وعدم استثنائها
 async function saveState(options = {}) {
     rebuildStudentIndexes();
     try {
@@ -1454,43 +1465,6 @@ async function saveState(options = {}) {
     }
 
     if (useCloud && db) {
-        if (useSplitCollections && options.syncSplit) {
-            const batch = db.batch();
-            batch.set(db.collection('system_config').doc('global'), {
-                settings: APP_STATE.settings || {},
-                exams: APP_STATE.exams || [],
-                users: APP_STATE.users || [],
-                gift_templates: APP_STATE.gift_templates || [],
-                gift_logos: APP_STATE.gift_logos || {},
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            }, { merge: true });
-
-            if (Array.isArray(options.changedStudentIds) && options.changedStudentIds.length) {
-                options.changedStudentIds.forEach(sid => {
-                    const st = findStudentById(sid);
-                    if (st) {
-                        const docId = toDocSlug(st.student_id);
-                        batch.set(db.collection('students').doc(docId), st, { merge: true });
-                    }
-                });
-            }
-            if (Array.isArray(options.changedSubmissionKeys) && options.changedSubmissionKeys.length) {
-                options.changedSubmissionKeys.forEach(subKey => {
-                    const sub = APP_STATE.submissions?.[subKey];
-                    if (sub) {
-                        batch.set(db.collection('submissions').doc(toDocSlug(subKey)), {
-                            submission_key: subKey,
-                            ...sub,
-                            serverUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                        }, { merge: true });
-                    }
-                });
-            }
-            await batch.commit();
-            lastCloudSyncAt = Date.now();
-            return { synced: true };
-        }
-
         const cleanPayload = JSON.parse(JSON.stringify(APP_STATE, (_k, v) => (v === undefined ? null : v)));
         const MAX_SAFE_BYTES = 900000;
         let approxBytes = new Blob([JSON.stringify(cleanPayload)]).size;
@@ -1512,14 +1486,27 @@ async function saveState(options = {}) {
         }
 
         APP_STATE = normalizeStateShape(cleanPayload);
-        await db.collection('quran_system').doc('main_state').set(cleanPayload);
+
+        // كتابة المستند الرئيسي + تحديث شريحة الامتحان المحدد (أو كل الشرائح عند الاستيراد)
+        const batch = db.batch();
+        batch.set(db.collection('quran_system').doc('main_state'), cleanPayload);
+
+        const targetShards = Array.isArray(options.shardExams) && options.shardExams.length
+            ? Array.from(new Set(options.shardExams))
+            : (options.allShards ? getExamShardDocIds() : []);
+
+        targetShards.forEach(exKey => {
+            if (!exKey || exKey === 'none') return;
+            batch.set(db.collection('quran_system').doc('exam_shard_' + exKey), buildExamShardPayload(exKey), { merge: true });
+        });
+
+        await batch.commit();
         lastCloudSyncAt = Date.now();
         return { synced: true };
     }
     return { synced: false, localDemo: true };
 }
 
-// مزامنة الدرجات المحفوظة محلياً تلقائياً فور عودة الإنترنت أو استجابة السحابة
 async function flushPendingOfflineSync(showFeedback = false) {
     if (isFlushingOfflineQueue) return;
     const q = getPendingGradeQueue();
@@ -1535,9 +1522,10 @@ async function flushPendingOfflineSync(showFeedback = false) {
 
     isFlushingOfflineQueue = true;
     try {
+        const touchedExams = q.map(x => x.activeExam).filter(Boolean);
         await loadState(true);
         mergePendingGradesOntoState(APP_STATE);
-        await saveState({ syncSplit: true });
+        await saveState({ shardExams: [...touchedExams, 'ahkam'] });
         setPendingGradeQueue([]);
         if (currentUser && !document.getElementById('viewTeacher').classList.contains('hidden')) {
             onTeacherGroupChanged();
@@ -4036,7 +4024,7 @@ function importExcelFile() {
             APP_STATE.groups_meta = newGroupsMeta;
             APP_STATE.users = preservedUsers;
 
-            await saveState();
+            await saveState({ allShards: true });
             renderAdminGroups();
             renderAdminUsers();
             renderAdminReports();
@@ -4294,7 +4282,7 @@ async function saveTeacherGrades(isSubmit) {
             return;
         }
 
-        const res = await saveState({ syncSplit: true, changedStudentIds: changedIds, changedSubmissionKeys: [subKey] });
+        const res = await saveState({ shardExams: [activeExam, 'ahkam'] });
         if (res && res.synced) {
             const qAfter = getPendingGradeQueue().filter(x => !(x.groupName === groupName && x.activeExam === activeExam));
             setPendingGradeQueue(qAfter);
