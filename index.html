@@ -234,17 +234,21 @@
         <!-- تبويب 1: التحكم في الاختبار وإضافة اختبارات جديدة -->
         <div id="tabControl" class="card">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
-                <h3 style="margin:0; color:#1f4e78;">التحكم في الاختبار المفتوح للرصد حالياً</h3>
+                <h3 style="margin:0; color:#1f4e78;">التحكم في الاختبارات المفتوحة للرصد وصلاحيات المجموعات</h3>
                 <button class="btn btn-success btn-sm" onclick="openAddStudentModal()">➕ إضافة طالب جديد</button>
             </div>
-            <div class="grid-2" style="align-items:end; margin-bottom:16px;">
-                <div>
-                    <label style="font-weight:bold; font-size:13px; display:block; margin-bottom:6px;">الاختبار النشط حالياً:</label>
-                    <select id="adminActiveExam" class="select-field"></select>
+
+            <!-- لوحة فتح أكثر من امتحان في نفس الوقت + قواعد الاستثناء والاختصاص لكل امتحان -->
+            <div style="background:#eff6ff; padding:14px; border-radius:12px; border:1.5px solid #93c5fd; margin-bottom:16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+                    <div>
+                        <b style="color:#1f4e78; font-size:14px;">١. الاختبارات المتاحة للرصد حالياً (يمكن فتح أكثر من امتحان في نفس الوقت):</b>
+                        <div style="font-size:12px; color:#475569; margin-top:2px;">فعّل الامتحانات المطلوب فتحها، واضبط نطاق المجموعات لكل امتحان (الكل / استثناء مجموعات / اختصاص مجموعات / شرط إتمام امتحان سابق).</div>
+                    </div>
+                    <button class="btn btn-success" onclick="saveExamRulesSettings()">💾 حفظ إعدادات الاختبارات والصلاحيات</button>
                 </div>
-                <div>
-                    <button class="btn btn-success" style="width:100%; padding:11px;" onclick="saveActiveExamSetting()">حفظ وتفعيل الاختبار المختار</button>
-                </div>
+
+                <div id="adminExamsRulesList" style="display:flex; flex-direction:column; gap:10px;"></div>
             </div>
 
             <!-- إضافة امتحان جديد غير الموجود -->
@@ -256,7 +260,11 @@
                 </div>
             </div>
 
-            <h4 style="color:#1f4e78; margin-bottom:8px;">موقف المجموعات في الاختبار المحدد:</h4>
+            <!-- عرض موقف المجموعات لأي امتحان -->
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+                <h4 style="color:#1f4e78; margin:0;">موقف المجموعات التفصيلي في اختبار:</h4>
+                <select id="adminInspectExamSelect" class="select-field" style="width:260px; padding:7px; font-size:13px; font-weight:bold;" onchange="renderAdminGroups()"></select>
+            </div>
             <div style="overflow-x:auto;">
                 <table>
                     <thead>
@@ -266,6 +274,7 @@
                             <th>المعلم</th>
                             <th>الطلاب</th>
                             <th>امتحان أحكام؟</th>
+                            <th>صلاحية الرصد في هذا الامتحان</th>
                             <th>الحالة</th>
                             <th>إجراء إداري</th>
                         </tr>
@@ -284,7 +293,11 @@
                     <button class="btn btn-primary btn-sm" onclick="openTransferStudentModal()">🔄 نقل طالب بين المجموعات</button>
                 </div>
             </div>
-            <div id="reportsExamTitle" style="font-weight:bold; color:#155e3b; margin-bottom:12px;"></div>
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px; background:#f0fdf4; padding:8px 12px; border-radius:8px; border:1px solid #86efac;">
+                <b style="color:#155e3b; font-size:13px;">عرض إحصائيات اختبار:</b>
+                <select id="reportsExamSelect" class="select-field" style="width:260px; padding:6px; font-size:13px; font-weight:bold;" onchange="renderAdminReports()"></select>
+                <span id="reportsExamTitle" style="font-size:12px; color:#475569;"></span>
+            </div>
 
             <!-- بطاقات الإحصائيات الثلاث مع قوائم منسدلة للمجموعات -->
             <div class="grid-3" style="margin-bottom:16px;">
@@ -292,7 +305,7 @@
                 <div style="background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:12px; padding:12px;">
                     <div style="font-size:12.5px; color:#475569; font-weight:bold;">مجموعات تحت الرصد (عند المعلم)</div>
                     <div id="statDraftCount" style="font-size:26px; font-weight:bold; color:#1e293b; margin:4px 0 8px 0;">0</div>
-                    <select id="statDraftSelect" class="select-field" style="font-size:12px; padding:6px;" onchange="if(this.value) openAdminEditGroup(this.value)">
+                    <select id="statDraftSelect" class="select-field" style="font-size:12px; padding:6px;" onchange="if(this.value) openAdminEditGroup(this.value, document.getElementById('reportsExamSelect').value)">
                         <option value="">-- قائمة المجموعات تحت الرصد --</option>
                     </select>
                 </div>
@@ -301,7 +314,7 @@
                 <div style="background:#fffbeb; border:1.5px solid #fcd34d; border-radius:12px; padding:12px;">
                     <div style="font-size:12.5px; color:#92400e; font-weight:bold;">تم رصدها (بانتظار المراجعة)</div>
                     <div id="statSubmittedCount" style="font-size:26px; font-weight:bold; color:#b45309; margin:4px 0 8px 0;">0</div>
-                    <select id="statSubmittedSelect" class="select-field" style="font-size:12px; padding:6px;" onchange="if(this.value) openAdminEditGroup(this.value)">
+                    <select id="statSubmittedSelect" class="select-field" style="font-size:12px; padding:6px;" onchange="if(this.value) openAdminEditGroup(this.value, document.getElementById('reportsExamSelect').value)">
                         <option value="">-- قائمة المجموعات المرصودة --</option>
                     </select>
                 </div>
@@ -310,7 +323,7 @@
                 <div style="background:#f0fdf4; border:1.5px solid #86efac; border-radius:12px; padding:12px;">
                     <div style="font-size:12.5px; color:#166534; font-weight:bold;">تم انتهاء الرصد والمراجعة ✔</div>
                     <div id="statApprovedCount" style="font-size:26px; font-weight:bold; color:#155e3b; margin:4px 0 8px 0;">0</div>
-                    <select id="statApprovedSelect" class="select-field" style="font-size:12px; padding:6px;" onchange="if(this.value) openAdminEditGroup(this.value)">
+                    <select id="statApprovedSelect" class="select-field" style="font-size:12px; padding:6px;" onchange="if(this.value) openAdminEditGroup(this.value, document.getElementById('reportsExamSelect').value)">
                         <option value="">-- قائمة المجموعات المعتمدة --</option>
                     </select>
                 </div>
@@ -463,20 +476,26 @@
     <!-- 3. واجهة المعلم (Teacher Dashboard) -->
     <div id="viewTeacher" class="hidden">
         <div class="card">
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
                 <div>
                     <h3 id="teacherWelcome" style="margin:0; color:#1f4e78;">مرحباً الشيخ/ ...</h3>
                     <div id="teacherExamBanner" style="margin-top:6px; font-weight:bold; color:#155e3b;"></div>
                 </div>
-                <div style="min-width:220px;">
-                    <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px;">اختر المجموعة:</label>
-                    <select id="teacherGroupSelect" class="select-field" onchange="renderTeacherStudents()"></select>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <div style="min-width:200px;">
+                        <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px;">١. اختر المجموعة:</label>
+                        <select id="teacherGroupSelect" class="select-field" onchange="onTeacherGroupChanged()"></select>
+                    </div>
+                    <div id="teacherExamSelectWrapper" style="min-width:210px;">
+                        <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px;">٢. اختر الامتحان المتاح:</label>
+                        <select id="teacherExamSelect" class="select-field" onchange="renderTeacherStudents()"></select>
+                    </div>
                 </div>
             </div>
         </div>
 
         <div id="teacherClosedAlert" class="card alert-box alert-warning hidden">
-            رصد الدرجات مغلق حالياً من قِبل إدارة المدرسة. يرجى التواصل مع الإدارة.
+            رصد الدرجات مغلق حالياً لهذه المجموعة من قِبل إدارة المدرسة (أو لم تستوفِ المجموعة شرط إتمام الامتحان السابق). يرجى التواصل مع الإدارة.
         </div>
 
         <div id="teacherGradingCard" class="card hidden">
@@ -513,7 +532,8 @@
                 <h3 id="reviewerWelcome" style="margin:0 0 6px 0; color:#1f4e78;">لوحة المراجعة والاعتماد</h3>
                 <div id="reviewerExamBanner" style="font-weight:bold; color:#155e3b;"></div>
             </div>
-            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                <select id="reviewerExamSelect" class="select-field" style="width:220px; padding:7px; font-size:13px; font-weight:bold;" onchange="renderReviewerGroups()"></select>
                 <button class="btn btn-success btn-sm" onclick="openAddStudentModal()">➕ إضافة طالب جديد</button>
                 <button class="btn btn-primary btn-sm" onclick="openTransferStudentModal()">🔄 نقل طالب بين المجموعات</button>
             </div>
@@ -1105,8 +1125,90 @@ function logout() {
     document.getElementById('viewLogin').classList.remove('hidden');
 }
 
-// ==================== 3. لوحة تحكم المدير (Admin) ====================
+// ==================== 3. لوحة تحكم المدير (Admin) + محرك قواعد الامتحانات ====================
+// تهيئة وترحيل قواعد الامتحانات (متوافق تماماً مع البيانات القديمة دون فقد أي حرف)
+function ensureExamRulesInitialized() {
+    if (!APP_STATE.settings) APP_STATE.settings = {};
+    if (!APP_STATE.settings.exam_rules) {
+        APP_STATE.settings.exam_rules = {};
+        const legacyActive = APP_STATE.settings.active_exam;
+        if (legacyActive && legacyActive !== 'none') {
+            APP_STATE.settings.exam_rules[legacyActive] = {
+                enabled: true,
+                mode: 'ALL',
+                groups: [],
+                prereq_exam: ''
+            };
+        }
+    }
+    (APP_STATE.exams || []).forEach(ex => {
+        if (!APP_STATE.settings.exam_rules[ex.key]) {
+            APP_STATE.settings.exam_rules[ex.key] = {
+                enabled: false,
+                mode: 'ALL',
+                groups: [],
+                prereq_exam: ''
+            };
+        }
+    });
+}
+
+// التحقق هل المجموعة مستوفية لامتحان سابق (مرصود ومُرسل أو معتمد، أو مرصودة درجاته للطلاب)
+function hasGroupCompletedExam(groupName, prereqExamKey) {
+    if (!prereqExamKey) return true;
+    const sub = getSubmissionRecord(prereqExamKey, groupName);
+    if (sub && (sub.status === 'submitted' || sub.status === 'approved')) return true;
+    const grpStudents = (APP_STATE.students || []).filter(s => s.group === groupName);
+    if (!grpStudents.length) return false;
+    return grpStudents.some(s => s.scores && String(s.scores[prereqExamKey] ?? '').trim() !== '');
+}
+
+// التحقق بدقة: هل يُسمح لمجموعة معينة برصد امتحان معين الآن؟
+function isExamAllowedForGroup(examKey, groupName) {
+    ensureExamRulesInitialized();
+    const rule = APP_STATE.settings.exam_rules[examKey];
+    if (!rule || !rule.enabled) {
+        return { allowed: false, reason: 'الامتحان مغلق حالياً' };
+    }
+    const mode = rule.mode || 'ALL';
+    const list = Array.isArray(rule.groups) ? rule.groups : [];
+
+    if (mode === 'EXCLUDE' && list.includes(groupName)) {
+        return { allowed: false, reason: 'مستثناة بقرار الإدارة (مغلق لها)' };
+    }
+    if (mode === 'INCLUDE' && !list.includes(groupName)) {
+        return { allowed: false, reason: 'مقتصر على مجموعات محددة أخرى' };
+    }
+    if (mode === 'PREREQ') {
+        const reqKey = rule.prereq_exam || '';
+        if (reqKey && !hasGroupCompletedExam(groupName, reqKey)) {
+            return { allowed: false, reason: `يشترط إتمام رصد (${getExamLabel(reqKey)}) أولاً` };
+        }
+    }
+    return { allowed: true, reason: 'متاح للرصد ✔' };
+}
+
+function getAllEnabledExamKeys() {
+    ensureExamRulesInitialized();
+    return (APP_STATE.exams || [])
+        .map(e => e.key)
+        .filter(k => APP_STATE.settings.exam_rules[k] && APP_STATE.settings.exam_rules[k].enabled);
+}
+
+function getAllowedExamsForGroup(groupName) {
+    ensureExamRulesInitialized();
+    return (APP_STATE.exams || []).filter(ex => isExamAllowedForGroup(ex.key, groupName).allowed);
+}
+
+function getDefaultInspectExamKey() {
+    const enabled = getAllEnabledExamKeys();
+    if (enabled.length > 0) return enabled[0];
+    const exams = APP_STATE.exams || [];
+    return exams.length > 0 ? exams[0].key : 'none';
+}
+
 function openAdminView() {
+    ensureExamRulesInitialized();
     document.getElementById('viewAdmin').classList.remove('hidden');
     renderExamsDropdown();
     renderAdminGroups();
@@ -1115,11 +1217,169 @@ function openAdminView() {
 }
 
 function renderExamsDropdown() {
-    const sel = document.getElementById('adminActiveExam');
+    ensureExamRulesInitialized();
     const examsList = APP_STATE.exams || [];
-    sel.innerHTML = `<option value="none">-- مغلق (لا يوجد رصد متاح حالياً) --</option>` +
-        examsList.map(ex => `<option value="${ex.key}">${ex.label}</option>`).join('');
-    sel.value = APP_STATE.settings.active_exam || 'none';
+    const allGroupNames = Object.keys(APP_STATE.groups_meta);
+
+    // 1. رسم بطاقات التحكم لكل امتحان (تفعيل متعدد + استثناء + اختصاص + شرط امتحان سابق)
+    const rulesContainer = document.getElementById('adminExamsRulesList');
+    if (rulesContainer) {
+        rulesContainer.innerHTML = examsList.map(ex => {
+            const rule = APP_STATE.settings.exam_rules[ex.key] || { enabled: false, mode: 'ALL', groups: [], prereq_exam: '' };
+            const selectedSet = new Set(Array.isArray(rule.groups) ? rule.groups : []);
+            const showGroupPicker = (rule.mode === 'EXCLUDE' || rule.mode === 'INCLUDE');
+            const showPrereqPicker = (rule.mode === 'PREREQ');
+
+            const otherExamsOptions = examsList
+                .filter(other => other.key !== ex.key)
+                .map(other => `<option value="${other.key}" ${rule.prereq_exam === other.key ? 'selected' : ''}>${other.label}</option>`)
+                .join('');
+
+            const checkboxesHtml = allGroupNames.map(gName => `
+                <label class="ex-rule-item_${ex.key}" data-name="${gName}" style="display:flex; align-items:center; gap:6px; padding:4px 8px; border-bottom:1px solid #f1f5f9; font-size:12px; cursor:pointer;">
+                    <input type="checkbox" class="ex-rule-chk_${ex.key}" value="${gName}" ${selectedSet.has(gName) ? 'checked' : ''} onchange="updateExamRuleGroupsSummary('${ex.key}')">
+                    <span>${gName}</span>
+                </label>
+            `).join('');
+
+            const summaryLabel = selectedSet.size > 0
+                ? `المجموعات المحددة (${selectedSet.size}): ${Array.from(selectedSet).slice(0, 2).join('، ')}${selectedSet.size > 2 ? '...' : ''}`
+                : (rule.mode === 'EXCLUDE' ? 'اضغط لتحديد المجموعات المستثناة (المغلقة)...' : 'اضغط لتحديد المجموعات المختصة بالرصد...');
+
+            return `
+            <div style="background:${rule.enabled ? '#ffffff' : '#f8fafc'}; border:1.5px solid ${rule.enabled ? '#15803d' : '#cbd5e1'}; border-radius:10px; padding:10px 12px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                    <label style="display:inline-flex; align-items:center; gap:8px; cursor:pointer; font-weight:bold; font-size:14px; color:${rule.enabled ? '#155e3b' : '#475569'};">
+                        <input type="checkbox" id="exEnabledChk_${ex.key}" ${rule.enabled ? 'checked' : ''} style="width:18px; height:18px; accent-color:#15803b;" onchange="onExamEnabledToggle('${ex.key}', this.checked)">
+                        <span>${ex.label}</span>
+                        <span class="badge ${rule.enabled ? 'badge-approved' : 'badge-draft'}">${rule.enabled ? 'مفتوح للرصد ✔' : 'مغلق'}</span>
+                    </label>
+
+                    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                        <span style="font-size:12px; color:#475569; font-weight:bold;">نطاق المجموعات:</span>
+                        <select id="exModeSel_${ex.key}" class="select-field" style="padding:5px 8px; font-size:12px; width:240px; font-weight:bold;" onchange="onExamRuleModeChange('${ex.key}', this.value)">
+                            <option value="ALL" ${rule.mode === 'ALL' ? 'selected' : ''}>متاح لجميع المجموعات</option>
+                            <option value="EXCLUDE" ${rule.mode === 'EXCLUDE' ? 'selected' : ''}>كل المجموعات ما عدا (استثناء مجموعات)...</option>
+                            <option value="INCLUDE" ${rule.mode === 'INCLUDE' ? 'selected' : ''}>اختصاص مجموعات معينة فقط...</option>
+                            <option value="PREREQ" ${rule.mode === 'PREREQ' ? 'selected' : ''}>المجموعات التي أتمّت امتحاناً سابقاً فقط...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- اختيار الامتحان السابق المشروط -->
+                <div id="exPrereqBox_${ex.key}" style="margin-top:8px; display:${showPrereqPicker ? 'flex' : 'none'}; align-items:center; gap:8px; flex-wrap:wrap; background:#fefce8; padding:8px; border-radius:8px; border:1px solid #fde047;">
+                    <b style="font-size:12px; color:#854d0e;">يُفتح تلقائياً للمجموعات التي أتمّت رصد:</b>
+                    <select id="exPrereqSel_${ex.key}" class="select-field" style="width:240px; padding:5px 8px; font-size:12px;">
+                        ${otherExamsOptions}
+                    </select>
+                </div>
+
+                <!-- اختيار المجموعات (للاستثناء أو الاختصاص) -->
+                <div id="exGroupsBox_${ex.key}" style="margin-top:8px; display:${showGroupPicker ? 'block' : 'none'};">
+                    <button type="button" class="btn btn-light btn-sm" style="width:100%; justify-content:space-between; border:1px solid #94a3b8; background:#fff;" onclick="toggleExamRuleDropdown('${ex.key}')">
+                        <span id="exRuleSummary_${ex.key}" style="font-size:12px; color:#1f4e78;">${summaryLabel}</span>
+                        <span>▼</span>
+                    </button>
+                    <div id="exRuleMenu_${ex.key}" class="hidden" style="margin-top:4px; background:#fff; border:1.5px solid #1f4e78; border-radius:8px; box-shadow:0 6px 18px rgba(0,0,0,0.12); text-align:right;">
+                        <div style="padding:6px; border-bottom:1px solid #e2e8f0; background:#f8fafc;">
+                            <input type="text" class="input-field" style="padding:5px 8px; font-size:12px;" placeholder="ابحث باسم المجموعة..." oninput="filterExamRuleGroups('${ex.key}', this.value)">
+                        </div>
+                        <div style="max-height:165px; overflow-y:auto; padding:2px 0;">
+                            ${checkboxesHtml || '<div style="padding:8px; color:#64748b; font-size:12px;">لا توجد مجموعات</div>'}
+                        </div>
+                        <div style="padding:6px; border-top:1px solid #e2e8f0; background:#f8fafc; text-align:left;">
+                            <button type="button" class="btn btn-light btn-sm" onclick="toggleExamRuleDropdown('${ex.key}')">تم ✔</button>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    // 2. تعبئة قائمة المعاينة في جدول موقف المجموعات
+    const inspectSel = document.getElementById('adminInspectExamSelect');
+    if (inspectSel) {
+        const prevVal = inspectSel.value;
+        inspectSel.innerHTML = examsList.map(ex => {
+            const isOpen = APP_STATE.settings.exam_rules[ex.key]?.enabled;
+            return `<option value="${ex.key}">${ex.label} ${isOpen ? '(مفتوح ✔)' : '(مغلق)'}</option>`;
+        }).join('');
+        if (prevVal && examsList.some(e => e.key === prevVal)) {
+            inspectSel.value = prevVal;
+        } else {
+            inspectSel.value = getDefaultInspectExamKey();
+        }
+    }
+}
+
+function onExamEnabledToggle(examKey, isChecked) {
+    ensureExamRulesInitialized();
+    APP_STATE.settings.exam_rules[examKey].enabled = isChecked;
+    renderExamsDropdown();
+}
+
+function onExamRuleModeChange(examKey, mode) {
+    ensureExamRulesInitialized();
+    APP_STATE.settings.exam_rules[examKey].mode = mode;
+    const grpBox = document.getElementById(`exGroupsBox_${examKey}`);
+    const preBox = document.getElementById(`exPrereqBox_${examKey}`);
+    if (grpBox) grpBox.style.display = (mode === 'EXCLUDE' || mode === 'INCLUDE') ? 'block' : 'none';
+    if (preBox) preBox.style.display = (mode === 'PREREQ') ? 'flex' : 'none';
+    updateExamRuleGroupsSummary(examKey);
+}
+
+function toggleExamRuleDropdown(examKey) {
+    const menu = document.getElementById(`exRuleMenu_${examKey}`);
+    if (menu) menu.classList.toggle('hidden');
+}
+
+function filterExamRuleGroups(examKey, query) {
+    const q = query.trim();
+    document.querySelectorAll(`.ex-rule-item_${examKey}`).forEach(lbl => {
+        const name = lbl.dataset.name || '';
+        lbl.style.display = (!q || name.includes(q)) ? 'flex' : 'none';
+    });
+}
+
+function updateExamRuleGroupsSummary(examKey) {
+    const selected = Array.from(document.querySelectorAll(`.ex-rule-chk_${examKey}:checked`)).map(c => c.value);
+    const mode = document.getElementById(`exModeSel_${examKey}`)?.value || 'ALL';
+    const sumEl = document.getElementById(`exRuleSummary_${examKey}`);
+    if (!sumEl) return;
+    if (selected.length > 0) {
+        sumEl.textContent = `المجموعات المحددة (${selected.length}): ${selected.slice(0, 2).join('، ')}${selected.length > 2 ? '...' : ''}`;
+    } else {
+        sumEl.textContent = mode === 'EXCLUDE'
+            ? 'اضغط لتحديد المجموعات المستثناة (المغلقة)...'
+            : 'اضغط لتحديد المجموعات المختصة بالرصد...';
+    }
+}
+
+async function saveExamRulesSettings() {
+    ensureExamRulesInitialized();
+    (APP_STATE.exams || []).forEach(ex => {
+        const enabled = document.getElementById(`exEnabledChk_${ex.key}`)?.checked || false;
+        const mode = document.getElementById(`exModeSel_${ex.key}`)?.value || 'ALL';
+        const prereq = document.getElementById(`exPrereqSel_${ex.key}`)?.value || '';
+        const selectedGroups = Array.from(document.querySelectorAll(`.ex-rule-chk_${ex.key}:checked`)).map(c => c.value);
+
+        APP_STATE.settings.exam_rules[ex.key] = {
+            enabled: enabled,
+            mode: mode,
+            groups: selectedGroups,
+            prereq_exam: prereq
+        };
+    });
+
+    const enabledKeys = getAllEnabledExamKeys();
+    APP_STATE.settings.active_exam = enabledKeys.length > 0 ? enabledKeys[0] : 'none';
+
+    await saveState();
+    renderExamsDropdown();
+    renderAdminGroups();
+    renderAdminReports();
+    alert(`تم حفظ إعدادات الاختبارات والصلاحيات بنجاح ✔
+عدد الامتحانات المفتوحة حالياً: (${enabledKeys.length})`);
 }
 
 async function addNewExam() {
@@ -1129,15 +1389,23 @@ async function addNewExam() {
         return;
     }
     if (!APP_STATE.exams) APP_STATE.exams = [];
+    ensureExamRulesInitialized();
     const newKey = 'exam_' + (APP_STATE.exams.length + 1) + '_' + Date.now().toString().slice(-3);
     APP_STATE.exams.push({ key: newKey, label: title });
+    APP_STATE.settings.exam_rules[newKey] = {
+        enabled: true,
+        mode: 'ALL',
+        groups: [],
+        prereq_exam: ''
+    };
     APP_STATE.settings.active_exam = newKey;
 
     await saveState();
     document.getElementById('newExamTitleInput').value = '';
     renderExamsDropdown();
     renderAdminGroups();
-    alert(`تمت إضافة امتحان (${title}) وتفعيله كاختبار نشط بنجاح!`);
+    renderAdminReports();
+    alert(`تمت إضافة امتحان (${title}) وتفعيله كاختبار مفتوح للرصد بنجاح!`);
 }
 
 function switchAdminTab(tabId, btnEl) {
@@ -1150,13 +1418,6 @@ function switchAdminTab(tabId, btnEl) {
     if (tabId === 'tabReports') {
         renderAdminReports();
     }
-}
-
-async function saveActiveExamSetting() {
-    APP_STATE.settings.active_exam = document.getElementById('adminActiveExam').value;
-    await saveState();
-    renderAdminGroups();
-    alert('تم تحديث الاختبار النشط بنجاح!');
 }
 
 function getSubmissionRecord(examKey, groupName) {
@@ -1178,15 +1439,21 @@ function getStatusBadge(status) {
 }
 
 function renderAdminGroups() {
+    ensureExamRulesInitialized();
     const tbody = document.getElementById('adminGroupsTable');
-    const activeExam = APP_STATE.settings.active_exam;
+    const inspectExam = document.getElementById('adminInspectExamSelect')?.value || getDefaultInspectExamKey();
     const groupNames = Object.keys(APP_STATE.groups_meta);
 
     tbody.innerHTML = groupNames.map(gName => {
         const meta = APP_STATE.groups_meta[gName];
         const count = APP_STATE.students.filter(s => s.group === gName).length;
-        const sub = activeExam !== 'none' ? getSubmissionRecord(activeExam, gName) : { status: 'draft' };
+        const sub = inspectExam !== 'none' ? getSubmissionRecord(inspectExam, gName) : { status: 'draft' };
         const checked = meta.has_ahkam ? 'checked' : '';
+        const perm = inspectExam !== 'none' ? isExamAllowedForGroup(inspectExam, gName) : { allowed: false, reason: 'مغلق' };
+        const permBadge = perm.allowed
+            ? `<span class="badge badge-approved">مفتوح للرصد ✔</span>`
+            : `<span class="badge badge-returned" title="${perm.reason}">مغلق (${perm.reason})</span>`;
+
         return `
         <tr>
             <td>${meta.group_num || '-'}</td>
@@ -1196,9 +1463,10 @@ function renderAdminGroups() {
             <td>
                 <input type="checkbox" ${checked} onchange="toggleGroupAhkam('${gName}', this.checked)">
             </td>
-            <td>${activeExam === 'none' ? '<span class="badge badge-draft">مغلق</span>' : getStatusBadge(sub.status)}</td>
+            <td>${permBadge}</td>
+            <td>${inspectExam === 'none' ? '<span class="badge badge-draft">مغلق</span>' : getStatusBadge(sub.status)}</td>
             <td>
-                <button class="btn btn-primary btn-sm" onclick="openAdminEditGroup('${gName}')">عرض / تعديل الدرجات</button>
+                <button class="btn btn-primary btn-sm" onclick="openAdminEditGroup('${gName}', '${inspectExam}')">عرض / تعديل الدرجات</button>
             </td>
         </tr>`;
     }).join('');
@@ -1682,19 +1950,22 @@ function recordGradeAuditLog(student, examLabel, oldVal, newVal) {
     }
 }
 
-function openAdminEditGroup(groupName) {
-    const activeExam = APP_STATE.settings.active_exam;
-    if (activeExam === 'none') {
-        alert('يرجى اختيار اختبار نشط أولاً لعرض وتعديل درجاته.');
+let adminEditingExam = null;
+
+function openAdminEditGroup(groupName, examKeyOverride) {
+    const targetExam = examKeyOverride || document.getElementById('adminInspectExamSelect')?.value || getDefaultInspectExamKey();
+    if (!targetExam || targetExam === 'none') {
+        alert('يرجى اختيار اختبار أولاً لعرض وتعديل درجاته.');
         return;
     }
     adminEditingGroup = groupName;
+    adminEditingExam = targetExam;
     const meta = APP_STATE.groups_meta[groupName] || { has_ahkam: false };
-    const sub = getSubmissionRecord(activeExam, groupName);
-    document.getElementById('adminModalTitle').textContent = `مراجعة وتعديل درجات مجموعة: ${groupName} (${getExamLabel(activeExam)})`;
+    const sub = getSubmissionRecord(targetExam, groupName);
+    document.getElementById('adminModalTitle').textContent = `مراجعة وتعديل درجات مجموعة: ${groupName} (${getExamLabel(targetExam)})`;
     document.getElementById('adminModalStatusRow').innerHTML = `المعلم: <b>${meta.teacher || '-'}</b> | الحالة الحالية: ${getStatusBadge(sub.status)}`;
     document.getElementById('adminModalNoteInp').value = sub.note || '';
-    document.getElementById('thAdminExamCol').textContent = `درجة ${getExamLabel(activeExam)}`;
+    document.getElementById('thAdminExamCol').textContent = `درجة ${getExamLabel(targetExam)}`;
     document.getElementById('thAdminAhkamCol').style.display = meta.has_ahkam ? '' : 'none';
 
     const students = APP_STATE.students.filter(s => s.group === groupName);
@@ -1702,7 +1973,7 @@ function openAdminEditGroup(groupName) {
         <tr>
             <td>${s.student_id}</td>
             <td style="font-weight:bold;">${s.name}</td>
-            <td><input type="number" step="0.5" class="grade-input admin-exam-inp" data-sid="${s.student_id}" value="${s.scores[activeExam] ?? ''}"></td>
+            <td><input type="number" step="0.5" class="grade-input admin-exam-inp" data-sid="${s.student_id}" value="${s.scores[targetExam] ?? ''}"></td>
             <td style="display:${meta.has_ahkam ? '' : 'none'}"><input type="number" step="0.5" class="grade-input admin-ahkam-inp" data-sid="${s.student_id}" value="${s.scores.ahkam ?? ''}"></td>
         </tr>
     `).join('');
@@ -1717,18 +1988,19 @@ function closeAdminModal() {
     if (document.getElementById('addStudentModal')) document.getElementById('addStudentModal').classList.add('hidden');
     if (document.getElementById('transferStudentModal')) document.getElementById('transferStudentModal').classList.add('hidden');
     adminEditingGroup = null;
+    adminEditingExam = null;
 }
 
 function applyAdminModalInputsToState() {
-    const activeExam = APP_STATE.settings.active_exam;
-    const examLbl = getExamLabel(activeExam);
+    const targetExam = adminEditingExam || getDefaultInspectExamKey();
+    const examLbl = getExamLabel(targetExam);
     document.querySelectorAll('.admin-exam-inp').forEach(inp => {
         const sid = inp.dataset.sid;
         const st = APP_STATE.students.find(s => String(s.student_id) === String(sid));
         if (st) {
             const newVal = inp.value.trim();
-            recordGradeAuditLog(st, examLbl, st.scores[activeExam], newVal);
-            st.scores[activeExam] = newVal;
+            recordGradeAuditLog(st, examLbl, st.scores[targetExam], newVal);
+            st.scores[targetExam] = newVal;
         }
     });
     document.querySelectorAll('.admin-ahkam-inp').forEach(inp => {
@@ -1752,8 +2024,8 @@ async function saveAdminModalGrades() {
 
 // صلاحية الأدمن كمراجع للبت النهائي (اعتماد نهائي أو إرجاع بملاحظة)
 async function adminDecideGroup(decision) {
-    const activeExam = APP_STATE.settings.active_exam;
-    if (!adminEditingGroup || activeExam === 'none') return;
+    const targetExam = adminEditingExam || getDefaultInspectExamKey();
+    if (!adminEditingGroup || !targetExam || targetExam === 'none') return;
 
     const note = document.getElementById('adminModalNoteInp').value.trim();
     if (decision === 'returned' && !note) {
@@ -1762,14 +2034,13 @@ async function adminDecideGroup(decision) {
     }
 
     if (decision === 'approved') {
-        if (!confirm(`هل تؤكد البت النهائي واعتماد درجات مجموعة (${adminEditingGroup})؟
-هذا الاعتماد نهائي ويغلق التعديل على المعلمين.`)) {
+        if (!confirm(`هل تؤكد البت النهائي واعتماد درجات مجموعة (${adminEditingGroup})؟\nهذا الاعتماد نهائي ويغلق التعديل على المعلمين.`)) {
             return;
         }
     }
 
     applyAdminModalInputsToState();
-    const sub = getSubmissionRecord(activeExam, adminEditingGroup);
+    const sub = getSubmissionRecord(targetExam, adminEditingGroup);
     sub.status = decision;
     sub.note = decision === 'returned' ? note : '';
     sub.updated_at = new Date().toLocaleString('ar-EG');
@@ -1785,9 +2056,9 @@ async function adminDecideGroup(decision) {
 }
 
 async function adminResetGroupStatus(newStatus) {
-    const activeExam = APP_STATE.settings.active_exam;
-    if (!adminEditingGroup || activeExam === 'none') return;
-    const sub = getSubmissionRecord(activeExam, adminEditingGroup);
+    const targetExam = adminEditingExam || getDefaultInspectExamKey();
+    if (!adminEditingGroup || !targetExam || targetExam === 'none') return;
+    const sub = getSubmissionRecord(targetExam, adminEditingGroup);
     sub.status = newStatus;
     await saveState();
     renderAdminGroups();
@@ -1798,10 +2069,23 @@ async function adminResetGroupStatus(newStatus) {
 
 // ==================== التقارير وسجل التعديلات ====================
 function renderAdminReports() {
-    const activeExam = APP_STATE.settings.active_exam;
+    ensureExamRulesInitialized();
+    const repSel = document.getElementById('reportsExamSelect');
+    const examsList = APP_STATE.exams || [];
+    if (repSel) {
+        const prev = repSel.value;
+        repSel.innerHTML = examsList.map(ex => `<option value="${ex.key}">${ex.label}</option>`).join('');
+        if (prev && examsList.some(e => e.key === prev)) {
+            repSel.value = prev;
+        } else {
+            repSel.value = getDefaultInspectExamKey();
+        }
+    }
+    const activeExam = repSel ? repSel.value : getDefaultInspectExamKey();
     const titleEl = document.getElementById('reportsExamTitle');
     if (titleEl) {
-        titleEl.textContent = `إحصائيات الاختبار النشط حالياً: ${getExamLabel(activeExam)}`;
+        const isOpen = APP_STATE.settings.exam_rules[activeExam]?.enabled;
+        titleEl.textContent = isOpen ? '(مفتوح للرصد حالياً ✔)' : '(مغلق حالياً)';
     }
 
     const allGroups = Object.keys(APP_STATE.groups_meta);
@@ -2379,31 +2663,66 @@ function exportExcelFile() {
 
 // ==================== 5. واجهة المعلم (Teacher) ====================
 function openTeacherView() {
+    ensureExamRulesInitialized();
     document.getElementById('viewTeacher').classList.remove('hidden');
     document.getElementById('teacherWelcome').textContent = `مرحباً الشيخ/ ${currentUser.name}`;
 
-    const activeExam = APP_STATE.settings.active_exam;
-    if (activeExam === 'none') {
-        document.getElementById('teacherExamBanner').textContent = 'الحالة: الرصد مغلق حالياً';
+    const sel = document.getElementById('teacherGroupSelect');
+    const myGroups = currentUser.groups || [];
+    sel.innerHTML = myGroups.map(g => `<option value="${g}">${g}</option>`).join('');
+    onTeacherGroupChanged();
+}
+
+function onTeacherGroupChanged() {
+    ensureExamRulesInitialized();
+    const groupName = document.getElementById('teacherGroupSelect').value;
+    const examSel = document.getElementById('teacherExamSelect');
+    const examWrap = document.getElementById('teacherExamSelectWrapper');
+
+    if (!groupName) {
+        document.getElementById('teacherExamBanner').textContent = 'لا توجد مجموعات مسندة إليك حالياً';
         document.getElementById('teacherClosedAlert').classList.remove('hidden');
         document.getElementById('teacherGradingCard').classList.add('hidden');
         return;
     }
 
-    document.getElementById('teacherExamBanner').textContent = `الاختبار المتاح للرصد حالياً: ${getExamLabel(activeExam)}`;
+    const allowedExams = getAllowedExamsForGroup(groupName);
+    if (!allowedExams.length) {
+        if (examWrap) examWrap.classList.add('hidden');
+        const enabledAny = getAllEnabledExamKeys();
+        let reasonMsg = 'رصد الدرجات مغلق حالياً من قِبل إدارة المدرسة. يرجى التواصل مع الإدارة.';
+        if (enabledAny.length > 0) {
+            const firstCheck = isExamAllowedForGroup(enabledAny[0], groupName);
+            reasonMsg = `رصد الدرجات مغلق حالياً لمجموعة (${groupName}): ${firstCheck.reason}.`;
+        }
+        document.getElementById('teacherExamBanner').textContent = `الحالة لمجموعة (${groupName}): مغلق حالياً`;
+        const closedEl = document.getElementById('teacherClosedAlert');
+        closedEl.textContent = reasonMsg;
+        closedEl.classList.remove('hidden');
+        document.getElementById('teacherGradingCard').classList.add('hidden');
+        return;
+    }
+
+    if (examWrap) examWrap.classList.remove('hidden');
+    const prevExam = examSel.value;
+    examSel.innerHTML = allowedExams.map(ex => `<option value="${ex.key}">${ex.label.replace(/\s*\(عمود.*\)/, '')}</option>`).join('');
+    if (prevExam && allowedExams.some(e => e.key === prevExam)) {
+        examSel.value = prevExam;
+    }
+
     document.getElementById('teacherClosedAlert').classList.add('hidden');
     document.getElementById('teacherGradingCard').classList.remove('hidden');
-
-    const sel = document.getElementById('teacherGroupSelect');
-    const myGroups = currentUser.groups || [];
-    sel.innerHTML = myGroups.map(g => `<option value="${g}">${g}</option>`).join('');
     renderTeacherStudents();
 }
 
 function renderTeacherStudents() {
-    const activeExam = APP_STATE.settings.active_exam;
     const groupName = document.getElementById('teacherGroupSelect').value;
-    if (!groupName || activeExam === 'none') return;
+    const activeExam = document.getElementById('teacherExamSelect').value;
+    if (!groupName || !activeExam) return;
+
+    const allowedExams = getAllowedExamsForGroup(groupName);
+    document.getElementById('teacherExamBanner').textContent =
+        `الاختبارات المتاحة لهذه المجموعة (${allowedExams.length}): ${allowedExams.map(e => getExamLabel(e.key)).join(' + ')}`;
 
     const meta = APP_STATE.groups_meta[groupName] || { has_ahkam: false };
     const sub = getSubmissionRecord(activeExam, groupName);
@@ -2411,9 +2730,9 @@ function renderTeacherStudents() {
 
     const statusBanner = document.getElementById('teacherGroupStatusBanner');
     if (sub.status === 'approved') {
-        statusBanner.innerHTML = `<div class="alert-box alert-success"><b>تم اعتماد درجات هذه المجموعة نهائياً ✔</b> — لا يمكن التعديل عليها إلا من خلال إدارة المدرسة.</div>`;
+        statusBanner.innerHTML = `<div class="alert-box alert-success"><b>تم اعتماد درجات هذه المجموعة في (${getExamLabel(activeExam)}) نهائياً ✔</b> — لا يمكن التعديل عليها إلا من خلال إدارة المدرسة.</div>`;
     } else if (sub.status === 'submitted') {
-        statusBanner.innerHTML = `<div class="alert-box alert-warning"><b>تم إرسال الدرجات للمراجعة ⏳</b> — التعديل مغلق لحين انتهاء المراجع من الاعتماد.</div>`;
+        statusBanner.innerHTML = `<div class="alert-box alert-warning"><b>تم إرسال درجات (${getExamLabel(activeExam)}) للمراجعة ⏳</b> — التعديل مغلق لحين انتهاء المراجع من الاعتماد.</div>`;
     } else if (sub.status === 'returned') {
         statusBanner.innerHTML = `<div class="alert-box alert-danger"><b>تمت إعادة المجموعة من المراجع للتعديل ↩</b><br>ملاحظات المراجع: <u>${sub.note || 'يرجى مراجعة الدرجات'}</u></div>`;
     } else {
@@ -2453,12 +2772,12 @@ function renderTeacherStudents() {
 }
 
 async function saveTeacherGrades(isSubmit) {
-    const activeExam = APP_STATE.settings.active_exam;
+    const activeExam = document.getElementById('teacherExamSelect').value;
     const groupName = document.getElementById('teacherGroupSelect').value;
-    if (!groupName || activeExam === 'none') return;
+    if (!groupName || !activeExam) return;
 
     if (isSubmit) {
-        const ok = confirm(`هل أنت متأكد من إرسال درجات مجموعة (${groupName}) للمراجعة؟\nلن تتمكن من التعديل بعد الإرسال إلا إذا أعادها المراجع.`);
+        const ok = confirm(`هل أنت متأكد من إرسال درجات مجموعة (${groupName}) في (${getExamLabel(activeExam)}) للمراجعة؟\nلن تتمكن من التعديل بعد الإرسال إلا إذا أعادها المراجع.`);
         if (!ok) return;
     }
 
@@ -2488,12 +2807,12 @@ async function saveTeacherGrades(isSubmit) {
     sub.updated_at = new Date().toLocaleString('ar-EG');
 
     await saveState();
-    renderTeacherStudents();
+    onTeacherGroupChanged();
     alert(isSubmit ? 'تم إرسال الدرجات للمراجع بنجاح!' : 'تم حفظ المسودة بنجاح.');
 }
 
 function notifyReviewerWhatsApp() {
-    const activeExam = APP_STATE.settings.active_exam;
+    const activeExam = document.getElementById('teacherExamSelect').value;
     const groupName = document.getElementById('teacherGroupSelect').value;
     const reviewer = APP_STATE.users.find(u => {
         if (!u.phone) return false;
@@ -2516,18 +2835,34 @@ function notifyReviewerWhatsApp() {
 
 // ==================== 6. واجهة المراجع (Reviewer) ====================
 function openReviewerView() {
+    ensureExamRulesInitialized();
     document.getElementById('viewReviewer').classList.remove('hidden');
     document.getElementById('reviewerWelcome').textContent = `مرحباً الشيخ/ ${currentUser.name} (لجنة المراجعة)`;
-    const activeExam = APP_STATE.settings.active_exam;
-    document.getElementById('reviewerExamBanner').textContent = `الاختبار الجاري مراجعته: ${getExamLabel(activeExam)}`;
+
+    const revExamSel = document.getElementById('reviewerExamSelect');
+    const examsList = APP_STATE.exams || [];
+    if (revExamSel) {
+        const prev = revExamSel.value;
+        revExamSel.innerHTML = examsList.map(ex => {
+            const isOpen = APP_STATE.settings.exam_rules[ex.key]?.enabled;
+            return `<option value="${ex.key}">${ex.label.replace(/\s*\(عمود.*\)/, '')} ${isOpen ? '(مفتوح)' : ''}</option>`;
+        }).join('');
+        if (prev && examsList.some(e => e.key === prev)) {
+            revExamSel.value = prev;
+        } else {
+            revExamSel.value = getDefaultInspectExamKey();
+        }
+    }
     renderReviewerGroups();
 }
 
 function renderReviewerGroups() {
     const container = document.getElementById('reviewerListContainer');
-    const activeExam = APP_STATE.settings.active_exam;
-    if (activeExam === 'none') {
-        container.innerHTML = `<div class="card alert-box alert-warning">لا يوجد اختبار مفتوح حالياً.</div>`;
+    const activeExam = document.getElementById('reviewerExamSelect')?.value || getDefaultInspectExamKey();
+    document.getElementById('reviewerExamBanner').textContent = `الاختبار الجاري مراجعته: ${getExamLabel(activeExam)}`;
+
+    if (!activeExam || activeExam === 'none') {
+        container.innerHTML = `<div class="card alert-box alert-warning">لا يوجد اختبار محدد للمراجعة حالياً.</div>`;
         return;
     }
 
@@ -2610,8 +2945,8 @@ function renderReviewerGroups() {
 }
 
 async function reviewerApprove(groupName) {
-    const activeExam = APP_STATE.settings.active_exam;
-    if (!confirm(`هل تؤكد الاعتماد النهائي لدرجات مجموعة (${groupName})؟\nبعد الاعتماد لا يمكن التعديل إلا من خلال المدير.`)) return;
+    const activeExam = document.getElementById('reviewerExamSelect')?.value || getDefaultInspectExamKey();
+    if (!confirm(`هل تؤكد الاعتماد النهائي لدرجات مجموعة (${groupName}) في (${getExamLabel(activeExam)})؟\nبعد الاعتماد لا يمكن التعديل إلا من خلال المدير.`)) return;
 
     const sub = getSubmissionRecord(activeExam, groupName);
     sub.status = 'approved';
@@ -2624,7 +2959,7 @@ async function reviewerApprove(groupName) {
 }
 
 async function reviewerReturn(groupName, noteInputId) {
-    const activeExam = APP_STATE.settings.active_exam;
+    const activeExam = document.getElementById('reviewerExamSelect')?.value || getDefaultInspectExamKey();
     const note = document.getElementById(noteInputId).value.trim();
     if (!note) {
         alert('يرجى كتابة سبب الإرجاع في خانة الملاحظات أولاً ليتمكن المعلم من تعديله.');
