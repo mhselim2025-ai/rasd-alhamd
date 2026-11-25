@@ -175,6 +175,7 @@
     </div>
     <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
         <span id="cloudStatus" class="sync-indicator">وضع التخزين: محلي (تجريبي)</span>
+        <button id="btnForceSync" class="btn btn-light btn-sm" onclick="manualForceCloudRefresh()" title="تحديث فوري من السحابة">🔄 تحديث</button>
         <button id="btnPendingSync" class="btn btn-warning btn-sm hidden" onclick="flushPendingOfflineSync(true)" title="درجات محفوظة محلياً بانتظار المزامنة">⏳ مزامنة معلقة (<span id="pendingSyncCount">0</span>)</button>
         <button id="btnOpenGiftStudio" class="btn btn-sm hidden" style="background:#f59e0b; color:#1e293b; font-weight:bold;" onclick="openGiftStudioModal()">🎖 إهداء وشهادات</button>
         <button id="btnChangeMyCode" class="btn btn-warning btn-sm hidden" onclick="openChangeMyCodeModal()">تغيير الكود 🔑</button>
@@ -1151,6 +1152,7 @@ let APP_STATE = {
 };
 
 let currentUser = null;
+    if (unsubscribeRealtimeState) { try { unsubscribeRealtimeState(); } catch(e) {} unsubscribeRealtimeState = null; }
 let adminEditingGroup = null;
 let lastCloudSyncAt = 0;
 
@@ -1273,11 +1275,94 @@ function initStorage() {
     rebuildStudentIndexes();
 }
 
-// ==================== قاعدة البيانات المحلية + توزيع الامتحانات في شرائح بـ Firestore ====================
+// ==================== محرك المزامنة المؤكد والحفظ المحلي غير القابل للضياع ====================
 const PENDING_GRADES_STORAGE_KEY = 'alhamd_pending_grades_v1';
+const CONFIRMED_LOCAL_JOURNAL_KEY = 'alhamd_confirmed_local_v1';
 let isFlushingOfflineQueue = false;
+let isSavingCloudNow = false;
+let unsubscribeRealtimeState = null;
 
-// أسماء شرائح الامتحانات في Firestore (لتوزيع المساحة والقراءات/الكتابات لكل امتحان)
+function getConfirmedLocalJournal() {
+    try {
+        const raw = localStorage.getItem(CONFIRMED_LOCAL_JOURNAL_KEY);
+        const obj = raw ? JSON.parse(raw) : {};
+        return (obj && typeof obj === 'object') ? obj : {};
+    } catch (e) {
+        return {};
+    }
+}
+
+function setConfirmedLocalJournal(journalObj) {
+    try {
+        localStorage.setItem(CONFIRMED_LOCAL_JOURNAL_KEY, JSON.stringify(journalObj || {}));
+    } catch (e) {
+        console.warn('Confirmed local journal warning:', e);
+    }
+}
+
+// تسجيل أي رصد أو إرسال أو اعتماد تم إجراؤه محلياً مع طابع زمني لضمان عدم ضياعه أبداً عند إعادة التحميل
+function recordConfirmedLocalEntry(examKey, groupName, scoresByStudentId, submissionMeta) {
+    if (!examKey || !groupName) return;
+    const journal = getConfirmedLocalJournal();
+    const key = `${examKey}__${groupName}`;
+    const prev = journal[key] || {};
+    journal[key] = {
+        examKey,
+        groupName,
+        clientTs: Date.now(),
+        scoresByStudentId: {
+            ...(prev.scoresByStudentId || {}),
+            ...(scoresByStudentId || {})
+        },
+        submissionMeta: submissionMeta ? { ...submissionMeta } : (prev.submissionMeta || null)
+    };
+    setConfirmedLocalJournal(journal);
+}
+
+function clearConfirmedLocalEntry(examKey, groupName) {
+    const journal = getConfirmedLocalJournal();
+    const key = `${examKey}__${groupName}`;
+    if (journal[key]) {
+        delete journal[key];
+        setConfirmedLocalJournal(journal);
+    }
+}
+
+function applyConfirmedLocalJournalToState(targetState) {
+    if (!targetState) return;
+    const journal = getConfirmedLocalJournal();
+    const entries = Object.values(journal);
+    if (!entries.length) return;
+
+    const stById = new Map((targetState.students || []).map(s => [normalizeStudentId(s.student_id), s]));
+    if (!targetState.submissions || typeof targetState.submissions !== 'object') {
+        targetState.submissions = {};
+    }
+
+    entries.forEach(item => {
+        const exKey = item.examKey;
+        const grpName = item.groupName;
+        if (item.scoresByStudentId && typeof item.scoresByStudentId === 'object') {
+            Object.entries(item.scoresByStudentId).forEach(([sid, sc]) => {
+                const st = stById.get(normalizeStudentId(sid));
+                if (st && sc) {
+                    if (!st.scores || typeof st.scores !== 'object') st.scores = {};
+                    if (exKey && sc.exam !== undefined) st.scores[exKey] = sc.exam;
+                    if (sc.ahkam !== undefined) st.scores.ahkam = sc.ahkam;
+                }
+            });
+        }
+        if (exKey && grpName && item.submissionMeta) {
+            const subKey = `${exKey}_${grpName}`;
+            const curSub = targetState.submissions[subKey];
+            // إذا كان الاعتماد أو الإرسال أحدث محلياً ولم يثبت بعد في السحابة، نُبقيه ظاهراً
+            if (!curSub || curSub.status !== item.submissionMeta.status) {
+                targetState.submissions[subKey] = { ...item.submissionMeta };
+            }
+        }
+    });
+}
+
 function getExamShardDocIds() {
     const baseKeys = ['exam_1', 'exam_2', 'exam_3', 'exam_4', 'ahkam'];
     const dynamicKeys = (APP_STATE.exams || []).map(e => e.key).filter(Boolean);
@@ -1358,10 +1443,12 @@ function setPendingGradeQueue(queue) {
 
 function updatePendingSyncBadgeUI() {
     const q = getPendingGradeQueue();
+    const jCount = Object.keys(getConfirmedLocalJournal()).length;
+    const totalPending = Math.max(q.length, jCount);
     const btn = document.getElementById('btnPendingSync');
     const cntEl = document.getElementById('pendingSyncCount');
-    if (cntEl) cntEl.textContent = String(q.length);
-    if (btn) btn.classList.toggle('hidden', q.length === 0);
+    if (cntEl) cntEl.textContent = String(totalPending);
+    if (btn) btn.classList.toggle('hidden', totalPending === 0);
 }
 
 function enqueuePendingGradeSave(payload) {
@@ -1403,27 +1490,28 @@ function mergePendingGradesOntoState(targetState) {
     return true;
 }
 
-async function loadState(forceRefresh = false) {
+async function loadState(forceRefresh = false, opts = {}) {
     const now = Date.now();
-    if (!forceRefresh && lastCloudSyncAt > 0 && (now - lastCloudSyncAt) < 2500) {
+    if (!forceRefresh && !opts.serverOnly && lastCloudSyncAt > 0 && (now - lastCloudSyncAt) < 800) {
         mergePendingGradesOntoState(APP_STATE);
+        applyConfirmedLocalJournalToState(APP_STATE);
         rebuildStudentIndexes();
         return APP_STATE;
     }
 
     if (useCloud && db && navigator.onLine !== false) {
         try {
-            const doc = await db.collection('quran_system').doc('main_state').get();
+            const getOpts = opts.serverOnly ? { source: 'server' } : undefined;
+            const doc = await db.collection('quran_system').doc('main_state').get(getOpts);
             if (doc.exists) {
                 APP_STATE = normalizeStateShape(doc.data());
             } else {
                 await saveState({ localOnly: true });
             }
 
-            // قراءة شرائح الامتحانات المنفصلة ودمجها دون المساس بأي سجل حالي
             const shardKeys = getExamShardDocIds();
             const shardSnaps = await Promise.all(
-                shardKeys.map(k => db.collection('quran_system').doc('exam_shard_' + k).get().catch(() => null))
+                shardKeys.map(k => db.collection('quran_system').doc('exam_shard_' + k).get(getOpts).catch(() => null))
             );
             shardSnaps.forEach((snap, i) => {
                 if (snap && snap.exists) {
@@ -1432,14 +1520,28 @@ async function loadState(forceRefresh = false) {
             });
 
             mergePendingGradesOntoState(APP_STATE);
+            applyConfirmedLocalJournalToState(APP_STATE);
             lastCloudSyncAt = Date.now();
             try { localStorage.setItem('quran_grades_state', JSON.stringify(APP_STATE)); } catch (e) {}
         } catch (cloudErr) {
+            if (opts.serverOnly) {
+                try {
+                    const fallbackDoc = await db.collection('quran_system').doc('main_state').get();
+                    if (fallbackDoc.exists) {
+                        APP_STATE = normalizeStateShape(fallbackDoc.data());
+                        mergePendingGradesOntoState(APP_STATE);
+                        applyConfirmedLocalJournalToState(APP_STATE);
+                        rebuildStudentIndexes();
+                        return APP_STATE;
+                    }
+                } catch (e2) {}
+            }
             const localData = localStorage.getItem('quran_grades_state');
             if (localData) {
                 APP_STATE = normalizeStateShape(JSON.parse(localData));
             }
             mergePendingGradesOntoState(APP_STATE);
+            applyConfirmedLocalJournalToState(APP_STATE);
         }
     } else {
         const localData = localStorage.getItem('quran_grades_state');
@@ -1447,9 +1549,62 @@ async function loadState(forceRefresh = false) {
             APP_STATE = normalizeStateShape(JSON.parse(localData));
         }
         mergePendingGradesOntoState(APP_STATE);
+        applyConfirmedLocalJournalToState(APP_STATE);
     }
     rebuildStudentIndexes();
     return APP_STATE;
+}
+
+function startRealtimeCloudListener() {
+    if (unsubscribeRealtimeState) {
+        try { unsubscribeRealtimeState(); } catch (e) {}
+        unsubscribeRealtimeState = null;
+    }
+    if (!useCloud || !db || navigator.onLine === false) return;
+
+    unsubscribeRealtimeState = db.collection('quran_system').doc('main_state').onSnapshot((doc) => {
+        if (!doc || !doc.exists || doc.metadata.hasPendingWrites || isSavingCloudNow) return;
+        const serverData = normalizeStateShape(doc.data());
+        APP_STATE = serverData;
+        mergePendingGradesOntoState(APP_STATE);
+        applyConfirmedLocalJournalToState(APP_STATE);
+        rebuildStudentIndexes();
+        lastCloudSyncAt = Date.now();
+        try { localStorage.setItem('quran_grades_state', JSON.stringify(APP_STATE)); } catch (e) {}
+
+        if (!currentUser) return;
+        if (!document.getElementById('viewReviewer').classList.contains('hidden')) {
+            renderReviewerGroups();
+        }
+        if (!document.getElementById('viewAdmin').classList.contains('hidden')) {
+            renderAdminGroups();
+            renderAdminReports();
+        }
+        if (!document.getElementById('viewTeacher').classList.contains('hidden')) {
+            onTeacherGroupChanged();
+        }
+    }, () => {});
+}
+
+async function manualForceCloudRefresh() {
+    showToast('جاري التحديث المباشر من السحابة...', 'info');
+    try {
+        await flushPendingOfflineSync(false);
+        await loadState(true, { serverOnly: true });
+        if (currentUser && !document.getElementById('viewReviewer').classList.contains('hidden')) {
+            renderReviewerGroups();
+        }
+        if (currentUser && !document.getElementById('viewAdmin').classList.contains('hidden')) {
+            renderAdminGroups();
+            renderAdminReports();
+        }
+        if (currentUser && !document.getElementById('viewTeacher').classList.contains('hidden')) {
+            onTeacherGroupChanged();
+        }
+        showToast('تم تحديث البيانات من السحابة بنجاح ✔', 'success');
+    } catch (e) {
+        showToast('تعذر التحديث المباشر من السحابة', 'warning');
+    }
 }
 
 async function saveState(options = {}) {
@@ -1465,44 +1620,46 @@ async function saveState(options = {}) {
     }
 
     if (useCloud && db) {
-        const cleanPayload = JSON.parse(JSON.stringify(APP_STATE, (_k, v) => (v === undefined ? null : v)));
-        const MAX_SAFE_BYTES = 900000;
-        let approxBytes = new Blob([JSON.stringify(cleanPayload)]).size;
+        isSavingCloudNow = true;
+        try {
+            const cleanPayload = JSON.parse(JSON.stringify(APP_STATE, (_k, v) => (v === undefined ? null : v)));
+            const MAX_SAFE_BYTES = 850000;
+            let approxBytes = new Blob([JSON.stringify(cleanPayload)]).size;
 
-        if (approxBytes > MAX_SAFE_BYTES && Array.isArray(cleanPayload.grade_logs)) {
-            cleanPayload.grade_logs = cleanPayload.grade_logs.slice(0, 50);
-            approxBytes = new Blob([JSON.stringify(cleanPayload)]).size;
+            if (approxBytes > MAX_SAFE_BYTES && Array.isArray(cleanPayload.grade_logs)) {
+                cleanPayload.grade_logs = cleanPayload.grade_logs.slice(0, 25);
+                approxBytes = new Blob([JSON.stringify(cleanPayload)]).size;
+            }
+            if (approxBytes > MAX_SAFE_BYTES && Array.isArray(cleanPayload.login_activity)) {
+                cleanPayload.login_activity = cleanPayload.login_activity.slice(0, 30);
+                approxBytes = new Blob([JSON.stringify(cleanPayload)]).size;
+            }
+            if (approxBytes > MAX_SAFE_BYTES && Array.isArray(cleanPayload.transfer_logs)) {
+                cleanPayload.transfer_logs = cleanPayload.transfer_logs.slice(0, 30);
+                approxBytes = new Blob([JSON.stringify(cleanPayload)]).size;
+            }
+            if (approxBytes > 990000) {
+                throw new Error('حجم بيانات المستند تجاوز الحد المسموح في Firestore (1MB).');
+            }
+
+            APP_STATE = normalizeStateShape(cleanPayload);
+
+            await db.collection('quran_system').doc('main_state').set(cleanPayload);
+
+            const targetShards = Array.isArray(options.shardExams) && options.shardExams.length
+                ? Array.from(new Set(options.shardExams))
+                : (options.allShards ? getExamShardDocIds() : []);
+
+            for (const exKey of targetShards) {
+                if (!exKey || exKey === 'none') continue;
+                await db.collection('quran_system').doc('exam_shard_' + exKey).set(buildExamShardPayload(exKey), { merge: true });
+            }
+
+            lastCloudSyncAt = Date.now();
+            return { synced: true };
+        } finally {
+            isSavingCloudNow = false;
         }
-        if (approxBytes > MAX_SAFE_BYTES && Array.isArray(cleanPayload.login_activity)) {
-            cleanPayload.login_activity = cleanPayload.login_activity.slice(0, 60);
-            approxBytes = new Blob([JSON.stringify(cleanPayload)]).size;
-        }
-        if (approxBytes > MAX_SAFE_BYTES && Array.isArray(cleanPayload.transfer_logs)) {
-            cleanPayload.transfer_logs = cleanPayload.transfer_logs.slice(0, 60);
-            approxBytes = new Blob([JSON.stringify(cleanPayload)]).size;
-        }
-        if (approxBytes > 1000000) {
-            throw new Error('حجم بيانات المستند تجاوز الحد المسموح في Firestore (1MB). يرجى إزالة الصور/الشعارات الكبيرة.');
-        }
-
-        APP_STATE = normalizeStateShape(cleanPayload);
-
-        // كتابة المستند الرئيسي + تحديث شريحة الامتحان المحدد (أو كل الشرائح عند الاستيراد)
-        const batch = db.batch();
-        batch.set(db.collection('quran_system').doc('main_state'), cleanPayload);
-
-        const targetShards = Array.isArray(options.shardExams) && options.shardExams.length
-            ? Array.from(new Set(options.shardExams))
-            : (options.allShards ? getExamShardDocIds() : []);
-
-        targetShards.forEach(exKey => {
-            if (!exKey || exKey === 'none') return;
-            batch.set(db.collection('quran_system').doc('exam_shard_' + exKey), buildExamShardPayload(exKey), { merge: true });
-        });
-
-        await batch.commit();
-        lastCloudSyncAt = Date.now();
-        return { synced: true };
     }
     return { synced: false, localDemo: true };
 }
@@ -1510,23 +1667,33 @@ async function saveState(options = {}) {
 async function flushPendingOfflineSync(showFeedback = false) {
     if (isFlushingOfflineQueue) return;
     const q = getPendingGradeQueue();
+    const journal = getConfirmedLocalJournal();
     updatePendingSyncBadgeUI();
-    if (!q.length) {
+
+    const journalEntries = Object.values(journal);
+    if (!q.length && !journalEntries.length) {
         if (showFeedback) showToast('لا توجد درجات معلقة للمزامنة', 'info');
         return;
     }
     if (!useCloud || !db || navigator.onLine === false) {
-        if (showFeedback) showToast('الدرجات محفوظة محلياً وستُرفع تلقائياً عند عودة الاتصال', 'warning');
+        if (showFeedback) showToast('البيانات محفوظة محلياً وستُرفع تلقائياً عند عودة الاتصال', 'warning');
         return;
     }
 
     isFlushingOfflineQueue = true;
     try {
-        const touchedExams = q.map(x => x.activeExam).filter(Boolean);
-        await loadState(true);
+        const touchedExams = new Set(q.map(x => x.activeExam).filter(Boolean));
+        journalEntries.forEach(j => { if (j.examKey) touchedExams.add(j.examKey); });
+        touchedExams.add('ahkam');
+
+        await loadState(true, { serverOnly: true });
         mergePendingGradesOntoState(APP_STATE);
-        await saveState({ shardExams: [...touchedExams, 'ahkam'] });
+        applyConfirmedLocalJournalToState(APP_STATE);
+
+        await saveState({ shardExams: Array.from(touchedExams) });
         setPendingGradeQueue([]);
+        setConfirmedLocalJournal({});
+
         if (currentUser && !document.getElementById('viewTeacher').classList.contains('hidden')) {
             onTeacherGroupChanged();
         }
@@ -1534,10 +1701,13 @@ async function flushPendingOfflineSync(showFeedback = false) {
             renderAdminGroups();
             renderAdminReports();
         }
-        showToast('تمت مزامنة الدرجات المحفوظة محلياً مع السحابة بنجاح ✔', 'success');
+        if (currentUser && !document.getElementById('viewReviewer').classList.contains('hidden')) {
+            renderReviewerGroups();
+        }
+        showToast('تمت مزامنة الدرجات والاعتمادات مع السحابة بنجاح ✔', 'success');
     } catch (err) {
         if (showFeedback) {
-            showToast('تعذرت المزامنة الآن — الدرجات آمنة ومحفوظة محلياً', 'warning');
+            showToast('تعذرت المزامنة الآن — الدرجات والاعتمادات محفوظة محلياً ولن تضيع', 'warning');
         }
     } finally {
         isFlushingOfflineQueue = false;
@@ -1618,6 +1788,7 @@ async function handleLogin(isAuto = false) {
     }
 
     currentUser = user;
+    startRealtimeCloudListener();
     recordDailyLoginActivity(user);
     try { localStorage.setItem('quran_grades_state', JSON.stringify(APP_STATE)); } catch (e) {}
     if (useCloud && db && !useSplitCollections) {
@@ -3035,6 +3206,8 @@ async function adminDecideGroup(decision) {
     }
 
     const changedIds = applyAdminModalInputsToState();
+    const qCleanAdm = getPendingGradeQueue().filter(x => !(x.groupName === adminEditingGroup && x.activeExam === targetExam));
+    setPendingGradeQueue(qCleanAdm);
     const subKey = `${targetExam}_${adminEditingGroup}`;
     const sub = getSubmissionRecord(targetExam, adminEditingGroup);
     sub.status = decision;
@@ -3042,14 +3215,23 @@ async function adminDecideGroup(decision) {
     sub.updated_at = new Date().toLocaleString('ar-EG');
     sub.decided_by = currentUser ? currentUser.name : 'الإدارة';
 
+    recordConfirmedLocalEntry(targetExam, adminEditingGroup, {}, { ...sub });
+    await saveState({ localOnly: true });
+
     try {
-        await saveState({ syncSplit: true, changedStudentIds: changedIds, changedSubmissionKeys: [subKey] });
+        const res = await saveState({ shardExams: [targetExam, 'ahkam'] });
+        if (res && res.synced) {
+            clearConfirmedLocalEntry(targetExam, adminEditingGroup);
+        }
         renderAdminGroups();
         renderAdminReports();
-        showToast(decision === 'approved' ? `تم اعتماد (${adminEditingGroup}) نهائياً` : `تم إرجاع (${adminEditingGroup}) للتعديل`, 'success');
+        showToast(decision === 'approved' ? `تم اعتماد (${adminEditingGroup}) نهائياً ✔` : `تم إرجاع (${adminEditingGroup}) للتعديل ✔`, 'success');
         closeAdminModal();
     } catch (err) {
-        alert('تعذر حفظ القرار: ' + err.message);
+        renderAdminGroups();
+        renderAdminReports();
+        showToast('تم تسجيل القرار محلياً؛ راجع اتصال السحابة أو اضغط 🔄 تحديث', 'warning');
+        closeAdminModal();
     }
 }
 
@@ -4207,7 +4389,6 @@ async function saveTeacherGrades(isSubmit) {
 
     const examLbl = getExamLabel(activeExam);
     const tchBatchChanges = [];
-    const changedIds = [];
     const scoresSnapshot = {};
 
     document.querySelectorAll('.tch-exam-inp').forEach(inp => {
@@ -4215,10 +4396,8 @@ async function saveTeacherGrades(isSubmit) {
         if (st) {
             const oldVal = String(st.scores[activeExam] ?? '').trim();
             const newVal = inp.value.trim();
-            if (!scoresSnapshot[st.student_id]) scoresSnapshot[st.student_id] = {};
-            scoresSnapshot[st.student_id].exam = newVal;
+            scoresSnapshot[st.student_id] = { ...(scoresSnapshot[st.student_id] || {}), exam: newVal };
             if (oldVal !== newVal) {
-                changedIds.push(st.student_id);
                 tchBatchChanges.push({
                     student_name: st.name,
                     student_id: st.student_id,
@@ -4236,10 +4415,8 @@ async function saveTeacherGrades(isSubmit) {
         if (st) {
             const oldVal = String(st.scores.ahkam ?? '').trim();
             const newVal = inp.value.trim();
-            if (!scoresSnapshot[st.student_id]) scoresSnapshot[st.student_id] = {};
-            scoresSnapshot[st.student_id].ahkam = newVal;
+            scoresSnapshot[st.student_id] = { ...(scoresSnapshot[st.student_id] || {}), ahkam: newVal };
             if (oldVal !== newVal) {
-                if (!changedIds.includes(st.student_id)) changedIds.push(st.student_id);
                 tchBatchChanges.push({
                     student_name: st.name,
                     student_id: st.student_id,
@@ -4256,12 +4433,11 @@ async function saveTeacherGrades(isSubmit) {
         appendBatchGradeLog(groupName, examLbl, tchBatchChanges, isSubmit ? 'إرسال للاعتماد' : 'حفظ مسودة');
     }
 
-    const subKey = `${activeExam}_${groupName}`;
     const sub = getSubmissionRecord(activeExam, groupName);
     sub.status = isSubmit ? 'submitted' : 'draft';
     sub.updated_at = new Date().toLocaleString('ar-EG');
 
-    // حفظ محلي فوري وضمان عدم ضياع الدرجات مطلقاً
+    recordConfirmedLocalEntry(activeExam, groupName, scoresSnapshot, { ...sub });
     enqueuePendingGradeSave({
         groupName,
         activeExam,
@@ -4275,8 +4451,8 @@ async function saveTeacherGrades(isSubmit) {
             onTeacherGroupChanged();
             showToast(
                 isSubmit
-                    ? 'تم حفظ الإرسال محلياً وسيُرفع تلقائياً عند توفر الإنترنت'
-                    : 'تم حفظ الدرجات محلياً بانتظار المزامنة',
+                    ? 'تم حفظ الإرسال محلياً ولن يُحذف وسيُزامن عند عودة الإنترنت'
+                    : 'تم حفظ الدرجات محلياً ولن تُحذف وسيُزامن عند عودة الإنترنت',
                 'warning'
             );
             return;
@@ -4284,6 +4460,7 @@ async function saveTeacherGrades(isSubmit) {
 
         const res = await saveState({ shardExams: [activeExam, 'ahkam'] });
         if (res && res.synced) {
+            clearConfirmedLocalEntry(activeExam, groupName);
             const qAfter = getPendingGradeQueue().filter(x => !(x.groupName === groupName && x.activeExam === activeExam));
             setPendingGradeQueue(qAfter);
         }
@@ -4291,7 +4468,7 @@ async function saveTeacherGrades(isSubmit) {
         showToast(isSubmit ? 'تم إرسال الدرجات واعتمادها سحابياً ✔' : 'تم حفظ الدرجات ومزامنتها ✔', 'success');
     } catch (err) {
         onTeacherGroupChanged();
-        showToast('تعذرت المزامنة الآن؛ الدرجات محفوظة محلياً ولن تُحذف', 'warning');
+        showToast('تعذرت المزامنة السحابية الآن؛ الدرجات محفوظة محلياً ولن تُحذف عند التحديث', 'warning');
     }
 }
 
@@ -4433,18 +4610,27 @@ async function reviewerApprove(groupName) {
     if (!confirm(`هل تؤكد الاعتماد النهائي لدرجات مجموعة (${groupName}) في (${getExamLabel(activeExam)})؟
 بعد الاعتماد لا يمكن التعديل إلا من خلال المدير.`)) return;
 
-    const subKey = `${activeExam}_${groupName}`;
+    const qClean = getPendingGradeQueue().filter(x => !(x.groupName === groupName && x.activeExam === activeExam));
+    setPendingGradeQueue(qClean);
     const sub = getSubmissionRecord(activeExam, groupName);
     sub.status = 'approved';
     sub.note = '';
     sub.updated_at = new Date().toLocaleString('ar-EG');
+    sub.decided_by = currentUser ? currentUser.name : 'المراجعة';
+
+    recordConfirmedLocalEntry(activeExam, groupName, {}, { ...sub });
+    await saveState({ localOnly: true });
 
     try {
-        await saveState({ syncSplit: true, changedSubmissionKeys: [subKey] });
+        const res = await saveState({ shardExams: [activeExam] });
+        if (res && res.synced) {
+            clearConfirmedLocalEntry(activeExam, groupName);
+        }
         renderReviewerGroups();
-        showToast(`تم اعتماد مجموعة (${groupName}) نهائياً`, 'success');
+        showToast(`تم اعتماد مجموعة (${groupName}) نهائياً ✔`, 'success');
     } catch (err) {
-        alert('تعذر حفظ الاعتماد: ' + err.message);
+        renderReviewerGroups();
+        showToast('تم اعتماد المجموعة محلياً؛ راجع اتصال السحابة أو اضغط 🔄 تحديث', 'warning');
     }
 }
 
