@@ -1152,7 +1152,6 @@ let APP_STATE = {
 };
 
 let currentUser = null;
-    if (unsubscribeRealtimeState) { try { unsubscribeRealtimeState(); } catch(e) {} unsubscribeRealtimeState = null; }
 let adminEditingGroup = null;
 let lastCloudSyncAt = 0;
 
@@ -1275,7 +1274,7 @@ function initStorage() {
     rebuildStudentIndexes();
 }
 
-// ==================== محرك المزامنة المؤكد والحفظ المحلي غير القابل للضياع ====================
+// ==================== محرك تقسيم الجداول في Firebase + المزامنة المؤكدة + الحفظ المحلي ====================
 const PENDING_GRADES_STORAGE_KEY = 'alhamd_pending_grades_v1';
 const CONFIRMED_LOCAL_JOURNAL_KEY = 'alhamd_confirmed_local_v1';
 let isFlushingOfflineQueue = false;
@@ -1300,7 +1299,6 @@ function setConfirmedLocalJournal(journalObj) {
     }
 }
 
-// تسجيل أي رصد أو إرسال أو اعتماد تم إجراؤه محلياً مع طابع زمني لضمان عدم ضياعه أبداً عند إعادة التحميل
 function recordConfirmedLocalEntry(examKey, groupName, scoresByStudentId, submissionMeta) {
     if (!examKey || !groupName) return;
     const journal = getConfirmedLocalJournal();
@@ -1355,7 +1353,6 @@ function applyConfirmedLocalJournalToState(targetState) {
         if (exKey && grpName && item.submissionMeta) {
             const subKey = `${exKey}_${grpName}`;
             const curSub = targetState.submissions[subKey];
-            // إذا كان الاعتماد أو الإرسال أحدث محلياً ولم يثبت بعد في السحابة، نُبقيه ظاهراً
             if (!curSub || curSub.status !== item.submissionMeta.status) {
                 targetState.submissions[subKey] = { ...item.submissionMeta };
             }
@@ -1398,6 +1395,47 @@ function buildExamShardPayload(examKey) {
     };
 }
 
+function buildPartitionedTablesPayloads(cleanState) {
+    // 1. جدول الإعدادات والأكواد والامتحانات (meta_config)
+    const metaTable = {
+        settings: cleanState.settings || {},
+        exams: cleanState.exams || [],
+        users: cleanState.users || [],
+        gift_templates: cleanState.gift_templates || [],
+        gift_logos: cleanState.gift_logos || {},
+        updated_at: new Date().toISOString()
+    };
+
+    // 2. جدول المجموعات (groups_table)
+    const groupsTable = {
+        groups_meta: cleanState.groups_meta || {},
+        updated_at: new Date().toISOString()
+    };
+
+    // 3. جدول بيانات الطلاب الأساسية بدون تكرار مصفوفات الدرجات الثقيلة (students_table)
+    const studentsTable = {
+        rows: (cleanState.students || []).map(s => ({
+            student_id: s.student_id || '',
+            name: s.name || '',
+            group: s.group || '',
+            group_num: s.group_num || '',
+            level: s.level || '',
+            section: s.section || '',
+            teacher: s.teacher || '',
+            ...(Array.isArray(s.transfer_history) && s.transfer_history.length ? { transfer_history: s.transfer_history } : {})
+        })),
+        updated_at: new Date().toISOString()
+    };
+
+    // 4. جدول حالات الاعتماد والتسليم (submissions_table)
+    const submissionsTable = {
+        submissions: cleanState.submissions || {},
+        updated_at: new Date().toISOString()
+    };
+
+    return { metaTable, groupsTable, studentsTable, submissionsTable };
+}
+
 function applyExamShardToState(targetState, examKey, shardData) {
     if (!targetState || !shardData || !shardData.scores) return;
     const stMap = new Map((targetState.students || []).map(s => [String(s.student_id), s]));
@@ -1406,9 +1444,9 @@ function applyExamShardToState(targetState, examKey, shardData) {
         if (st) {
             if (!st.scores || typeof st.scores !== 'object') st.scores = {};
             if (examKey === 'ahkam') {
-                if (!st.scores.ahkam && val !== '') st.scores.ahkam = val;
+                if ((st.scores.ahkam === undefined || st.scores.ahkam === '') && val !== '') st.scores.ahkam = val;
             } else {
-                if (!st.scores[examKey] && val !== '') st.scores[examKey] = val;
+                if ((st.scores[examKey] === undefined || st.scores[examKey] === '') && val !== '') st.scores[examKey] = val;
             }
         }
     });
@@ -1490,6 +1528,7 @@ function mergePendingGradesOntoState(targetState) {
     return true;
 }
 
+// قراءة الحالة من الجداول المقسّمة والمستند الرئيسي دون المساس بأي بيانات موجودة
 async function loadState(forceRefresh = false, opts = {}) {
     const now = Date.now();
     if (!forceRefresh && !opts.serverOnly && lastCloudSyncAt > 0 && (now - lastCloudSyncAt) < 800) {
@@ -1506,9 +1545,45 @@ async function loadState(forceRefresh = false, opts = {}) {
             if (doc.exists) {
                 APP_STATE = normalizeStateShape(doc.data());
             } else {
-                await saveState({ localOnly: true });
+                // محاولة القراءة من الجداول المقسّمة في حال لم يكن main_state موجوداً
+                const [metaSnap, grpSnap, stSnap, subSnap] = await Promise.all([
+                    db.collection('quran_system').doc('table_meta_config').get(getOpts).catch(() => null),
+                    db.collection('quran_system').doc('table_groups').get(getOpts).catch(() => null),
+                    db.collection('quran_system').doc('table_students').get(getOpts).catch(() => null),
+                    db.collection('quran_system').doc('table_submissions').get(getOpts).catch(() => null)
+                ]);
+                if (metaSnap && metaSnap.exists) {
+                    const md = metaSnap.data() || {};
+                    if (md.settings) APP_STATE.settings = md.settings;
+                    if (Array.isArray(md.exams) && md.exams.length) APP_STATE.exams = md.exams;
+                    if (Array.isArray(md.users) && md.users.length) APP_STATE.users = md.users;
+                    if (Array.isArray(md.gift_templates)) APP_STATE.gift_templates = md.gift_templates;
+                    if (md.gift_logos) APP_STATE.gift_logos = md.gift_logos;
+                }
+                if (grpSnap && grpSnap.exists && grpSnap.data()?.groups_meta) {
+                    APP_STATE.groups_meta = grpSnap.data().groups_meta;
+                }
+                if (stSnap && stSnap.exists && Array.isArray(stSnap.data()?.rows)) {
+                    APP_STATE.students = stSnap.data().rows.map(r => ({
+                        ...r,
+                        scores: { exam_1: '', exam_2: '', exam_3: '', exam_4: '', ahkam: '' }
+                    }));
+                }
+                if (subSnap && subSnap.exists && subSnap.data()?.submissions) {
+                    APP_STATE.submissions = subSnap.data().submissions;
+                }
             }
 
+            // دمج جدول الاعتمادات المقسم إن كان أحدث
+            const subTableSnap = await db.collection('quran_system').doc('table_submissions').get(getOpts).catch(() => null);
+            if (subTableSnap && subTableSnap.exists && subTableSnap.data()?.submissions) {
+                APP_STATE.submissions = {
+                    ...(APP_STATE.submissions || {}),
+                    ...subTableSnap.data().submissions
+                };
+            }
+
+            // قراءة ودمج شرائح الامتحانات المستقلة (الدوري الأول، نصف العام، الدوري الثاني، نهاية العام، الأحكام...)
             const shardKeys = getExamShardDocIds();
             const shardSnaps = await Promise.all(
                 shardKeys.map(k => db.collection('quran_system').doc('exam_shard_' + k).get(getOpts).catch(() => null))
@@ -1607,6 +1682,7 @@ async function manualForceCloudRefresh() {
     }
 }
 
+// حفظ البيانات في الجداول المقسّمة + شرائح الامتحانات + main_state بأمان تام
 async function saveState(options = {}) {
     rebuildStudentIndexes();
     try {
@@ -1644,11 +1720,20 @@ async function saveState(options = {}) {
 
             APP_STATE = normalizeStateShape(cleanPayload);
 
-            await db.collection('quran_system').doc('main_state').set(cleanPayload);
+            // كتابة الجداول المقسمة لتوزيع المساحة والقراءات
+            const { metaTable, groupsTable, studentsTable, submissionsTable } = buildPartitionedTablesPayloads(cleanPayload);
+            await Promise.all([
+                db.collection('quran_system').doc('table_meta_config').set(metaTable, { merge: true }),
+                db.collection('quran_system').doc('table_groups').set(groupsTable, { merge: true }),
+                db.collection('quran_system').doc('table_students').set(studentsTable),
+                db.collection('quran_system').doc('table_submissions').set(submissionsTable, { merge: true }),
+                db.collection('quran_system').doc('main_state').set(cleanPayload)
+            ]);
 
+            // تحديث شرائح الامتحانات المستقلة (كل امتحان في مستند مستقل)
             const targetShards = Array.isArray(options.shardExams) && options.shardExams.length
                 ? Array.from(new Set(options.shardExams))
-                : (options.allShards ? getExamShardDocIds() : []);
+                : getExamShardDocIds();
 
             for (const exKey of targetShards) {
                 if (!exKey || exKey === 'none') continue;
@@ -1897,6 +1982,7 @@ async function submitChangeMyCode() {
 
 function logout() {
     currentUser = null;
+    if (typeof unsubscribeRealtimeState === 'function') { try { unsubscribeRealtimeState(); } catch (e) {} unsubscribeRealtimeState = null; }
     localStorage.removeItem('alhamd_saved_code');
     document.getElementById('loginCodeInput').value = '';
     document.getElementById('viewAdmin').classList.add('hidden');
